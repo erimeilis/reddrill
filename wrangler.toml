@@ -1,0 +1,23 @@
+name = "reddrill"
+main = ".open-next/worker.js"
+compatibility_date = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Account ID - get from: wrangler whoami
+# account_id = "your-account-id"
+
+[observability]
+enabled = true
+
+# Static assets directory
+[assets]
+directory = ".open-next/assets"
+
+# KV namespace for cache (optional)
+# [[kv_namespaces]]
+# binding = "CACHE"
+# id = "your-kv-namespace-id"
+
+# Cloudflare Workers AI binding for translation
+[ai]
+binding = "AI"

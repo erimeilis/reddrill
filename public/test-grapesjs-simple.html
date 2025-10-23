@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>GrapesJS Simple Text Editing Test</title>
+  <link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+  <script src="https://unpkg.com/grapesjs"></script>
+  <style>
+    body, html { margin: 0; height: 100%; }
+  </style>
+</head>
+<body>
+  <div id="gjs" style="height:0px; overflow:hidden;"></div>
+
+  <script>
+    const editor = grapesjs.init({
+      container: '#gjs',
+      height: '100vh',
+      width: 'auto',
+      storageManager: false
+    });
+
+    // Load simple HTML content
+    editor.setComponents(`
+      <div style="padding: 40px;">
+        <h1>Test Heading</h1>
+        <p>Double-click this text to edit it. If editing works, you'll see a cursor and be able to type.</p>
+        <p>Try editing this paragraph too!</p>
+      </div>
+    `);
+
+    console.log('GrapesJS initialized (no plugins)');
+    console.log('Rich Text Editor:', editor.RichTextEditor);
+    console.log('RTE enabled:', editor.RichTextEditor ? true : false);
+
+    // Log when RTE is activated
+    editor.on('rte:enable', () => {
+      console.log('RTE ENABLED!');
+    });
+
+    editor.on('rte:disable', () => {
+      console.log('RTE DISABLED');
+    });
+  </script>
+</body>
+</html>
