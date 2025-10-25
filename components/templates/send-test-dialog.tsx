@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { IconMail, IconCircleCheck, IconAlertCircle, IconLoader } from '@tabler/icons-react';
+import mandrillClient from '@/lib/api/mandrill';
 import type { TestData } from './test-data-form';
 
 interface SendTestDialogProps {
@@ -36,6 +37,12 @@ export function SendTestDialog({ isOpen, onClose, templateSlug, testData }: Send
       return;
     }
 
+    const apiKey = mandrillClient.getApiKey();
+    if (!apiKey) {
+      setError('Please connect to Mandrill first');
+      return;
+    }
+
     setSending(true);
     setError(null);
     setSuccess(false);
@@ -45,6 +52,7 @@ export function SendTestDialog({ isOpen, onClose, templateSlug, testData }: Send
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          apiKey,
           mergeVars: testData.mergeVars,
           globalVars: testData.globalVars,
           recipientEmail: recipientEmail.trim(),

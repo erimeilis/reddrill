@@ -11,7 +11,7 @@ export async function POST(
 ) {
   try {
     const { slug } = await params;
-    const { mergeVars, globalVars, recipientEmail, recipientName } = await request.json();
+    const { apiKey, mergeVars, globalVars, recipientEmail, recipientName } = await request.json();
 
     if (!recipientEmail) {
       return NextResponse.json(
@@ -20,11 +20,10 @@ export async function POST(
       );
     }
 
-    const apiKey = process.env.MANDRILL_API_KEY;
     if (!apiKey) {
       return NextResponse.json(
-        { error: 'Mandrill API key not configured' },
-        { status: 500 }
+        { error: 'Mandrill API key not provided' },
+        { status: 400 }
       );
     }
 
