@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { IconX, IconCheck, IconLoader2, IconTrash, IconCopy } from '@tabler/icons-react';
+import { IconX, IconCheck, IconLoader2, IconTrash, IconCopy, IconTestPipe } from '@tabler/icons-react';
 import { MandrillTemplate } from '@/lib/api/mandrill';
 import dynamic from 'next/dynamic';
 import type { Editor } from 'grapesjs';
@@ -309,6 +309,15 @@ export function TemplateEditForm({ templateSlug }: TemplateEditFormProps) {
           <div className="flex justify-between items-center">
             <CardTitle>Edit Template: {template?.name}</CardTitle>
             <div className="flex gap-2">
+              <Button
+                variant="default"
+                onClick={() => router.push(`/templates/${templateSlug}/test`)}
+                disabled={saving || deleting || cloning}
+                title="Test template with dynamic data"
+              >
+                <IconTestPipe size={18} className="mr-2" />
+                Test
+              </Button>
               <Button variant="destructive" onClick={handleDelete} disabled={deleting || saving || cloning} title="Delete template">
                 {deleting ? (
                   <>

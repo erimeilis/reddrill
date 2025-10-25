@@ -7,9 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
     const { mergeVars, globalVars, recipientEmail, recipientName } = await request.json();
 
     if (!recipientEmail) {
@@ -44,7 +45,7 @@ export async function POST(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         key: apiKey,
-        template_name: params.slug,
+        template_name: slug,
         template_content: [],
         message: {
           to: [{

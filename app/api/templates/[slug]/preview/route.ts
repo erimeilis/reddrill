@@ -9,13 +9,14 @@ import { substitutePlaceholders } from '@/lib/utils/placeholder-parser';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
+    const { slug } = await params;
     const { mergeVars, globalVars } = await request.json();
 
     // Fetch template from Mandrill
-    const template = await mandrillClient.getTemplateInfo(params.slug);
+    const template = await mandrillClient.getTemplateInfo(slug);
 
     if (!template) {
       return NextResponse.json(
