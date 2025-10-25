@@ -22,3 +22,9 @@ directory = ".open-next/assets"
 [ai]
 binding = "AI"
 remote = true
+
+# D1 Database for audit trail
+[[d1_databases]]
+binding = "DB"
+database_name = "reddrill-audit"
+database_id = "preview-id-replace-after-creation"

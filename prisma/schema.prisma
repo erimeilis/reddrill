@@ -1,0 +1,76 @@
+// Prisma schema for Audit Trail System
+// Compatible with Cloudflare D1 (SQLite)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Schema version tracking
+model SchemaMigration {
+  version    Int      @id
+  appliedAt  DateTime @default(now()) @map("applied_at")
+
+  @@map("schema_migrations")
+}
+
+// Main audit log table
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Operation metadata
+  operationType   String  @map("operation_type") // 'create', 'update', 'delete', 'import', 'restore'
+  operationStatus String  @map("operation_status") // 'success', 'failure', 'partial'
+  operationId     String? @map("operation_id")
+
+  // Template identification
+  templateSlug String? @map("template_slug")
+  templateName String  @map("template_name")
+
+  // State snapshots (stored as JSON strings)
+  stateBefore String? @map("state_before")
+  stateAfter  String? @map("state_after")
+
+  // Change details (JSON string)
+  changesSummary String? @map("changes_summary")
+
+  // User context
+  userIdentifier String? @map("user_identifier")
+
+  // Error tracking
+  errorMessage String? @map("error_message")
+  errorDetails String? @map("error_details")
+
+  // Bulk operation metadata
+  bulkOperation     Int  @default(0) @map("bulk_operation") // 0 or 1 (SQLite boolean)
+  bulkTotalCount    Int? @map("bulk_total_count")
+  bulkSuccessCount  Int? @map("bulk_success_count")
+  bulkFailureCount  Int? @map("bulk_failure_count")
+
+  // Searchability
+  searchText String? @map("search_text")
+
+  @@index([createdAt(sort: Desc)])
+  @@index([templateName])
+  @@index([operationType])
+  @@index([operationId])
+  @@index([searchText])
+  @@index([operationType, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+// User settings (singleton table)
+model AuditSettings {
+  id             Int      @id @default(1)
+  enabled        Int      @default(0) // 0 or 1 (SQLite boolean)
+  retentionDays  Int      @default(30) @map("retention_days") // -1 = forever
+  userIdentifier String?  @map("user_identifier")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("audit_settings")
+}

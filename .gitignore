@@ -65,3 +65,5 @@ MIGRATION_PLAN.md
 *-plan.md
 *-PLAN.md
 plans/
+
+/lib/generated/prisma
