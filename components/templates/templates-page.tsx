@@ -244,7 +244,7 @@ export function TemplatesPage() {
           <h1 className="text-2xl font-bold">Templates</h1>
           <div className="flex gap-2">
             {/* View mode toggle */}
-            <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg">
+            <div className="flex gap-px bg-secondary/50 rounded-lg p-px">
               <Button
                 variant={viewMode === 'table' ? 'default' : 'ghost'}
                 size="sm"
@@ -278,7 +278,7 @@ export function TemplatesPage() {
               onClick={handleCreateTemplate}
               disabled={loading}
               title="Create New Template"
-              className="h-10"
+              size="sm"
             >
               <IconPlus size={18} className="mr-2" />
               Create New
@@ -288,7 +288,7 @@ export function TemplatesPage() {
               onClick={() => refresh()}
               disabled={loading}
               variant="icon"
-              size="icon"
+              size="sm"
               title="Refresh Templates"
             >
               {loading ? (
