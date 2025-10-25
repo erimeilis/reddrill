@@ -1,4 +1,8 @@
 import type { NextConfig } from "next";
+import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
+
+// Initialize Cloudflare for dev environment
+initOpenNextCloudflareForDev();
 
 const nextConfig: NextConfig = {
   output: 'standalone',

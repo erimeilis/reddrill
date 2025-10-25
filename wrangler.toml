@@ -21,3 +21,4 @@ directory = ".open-next/assets"
 # Cloudflare Workers AI binding for translation
 [ai]
 binding = "AI"
+remote = true

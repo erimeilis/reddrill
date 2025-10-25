@@ -1,7 +1,7 @@
 <div align="center">
   <img src="app/icon.svg" alt="RedDrill Icon" width="200" height="200">
 
-  # RedDrill 🔧
+  # RedDrill
 
   **Mandrill Template Manager for the modern web**
 
@@ -20,17 +20,28 @@
 - **Visual HTML Editor** - GrapesJS integration for WYSIWYG editing
 - **Multisite & Multilanguage Support** - Organize templates by site (labels) and locale
 - **Smart Naming Pattern** - `{theme}_{locale}` pattern for easy organization
-- **AI-Powered Translation** - Translate templates between languages with 4 providers
+- **AI-Powered Translation** - Translate templates with space-preserving placeholder protection
+- **Placeholder Detection** - Supports Mailchimp (*|VAR|*), Handlebars ({{var}}), Global (*|GLOBAL:VAR|*), Conditionals
+- **Template Testing** - Live preview with merge vars, send test emails, save test scenarios
 - **Real-time Editing** - Live preview and instant updates
 - **Theme & Locale Filtering** - Filter templates by theme, label, and locale
 - **Clone & Delete** - Duplicate templates and manage lifecycle
 
 ### 🌍 Translation System
-- **4 Translation Providers** - Cloudflare Workers AI (free), Google Cloud Translation, Azure Translator, Crowdin
+- **4 Translation Providers** - Cloudflare Workers AI (tested ✅), Google Translate (tested ✅), Azure Translator (not tested ⚠️), Crowdin (not tested ⚠️)
+- **Placeholder Protection** - XML PI tokens preserve placeholders and spacing during translation
 - **Row-by-Row Translation** - Preserves HTML structure while translating text
+- **Placeholder Validation** - Detects missing, added, or corrupted placeholders after translation
 - **Visual Comparison** - Side-by-side original and translated text review
 - **One-Click Localization** - Translate and save as new locale variant
 - **IndexedDB Storage** - Translation settings stored securely client-side
+
+### 🧪 Testing & Preview
+- **Live Preview** - Real-time template preview with merge variables
+- **Placeholder Detection** - Automatic detection of all placeholders (Mailchimp, Handlebars, Global, Conditionals)
+- **Test Email Sending** - Send test emails with custom merge vars using your Mandrill API key
+- **Test Scenarios** - Save and manage test scenarios with IndexedDB for quick testing
+- **Visual Placeholder List** - See all placeholders used in template with usage count
 
 ### 🏷️ Tags (Under Development 🚧)
 - Analytics with reputation scores
@@ -400,11 +411,15 @@ reddrill/
 ├── app/                           # Next.js App Router
 │   ├── @entity/                  # Entity details parallel route
 │   │   └── templates/[slug]/     # Template edit form
+│   │       └── test/             # Template testing page
 │   ├── @structure/               # List views parallel route
 │   │   ├── templates/            # Template list (table/tree)
 │   │   ├── tags/                 # Tags list
 │   │   └── senders/              # Senders list
 │   ├── api/
+│   │   ├── templates/[slug]/
+│   │   │   ├── preview/          # Template preview API
+│   │   │   └── send-test/        # Send test email API
 │   │   └── translate/            # Translation API route
 │   ├── globals.css               # Global styles + custom scrollbar
 │   └── layout.tsx                # Root layout with parallel routes
@@ -415,10 +430,16 @@ reddrill/
 │   │   ├── template-edit-form.tsx       # GrapesJS editor
 │   │   ├── template-tree-view.tsx       # Hierarchical tree view
 │   │   ├── templates-page.tsx           # Table view
-│   │   └── tree-node.tsx                # Tree node component
+│   │   ├── tree-node.tsx                # Tree node component
+│   │   ├── placeholder-list.tsx         # Placeholder detection UI
+│   │   ├── template-preview.tsx         # Live preview with merge vars
+│   │   ├── test-data-form.tsx           # Test data input form
+│   │   ├── test-scenario-selector.tsx   # Save/load test scenarios
+│   │   └── send-test-dialog.tsx         # Send test email dialog
 │   ├── translation/
 │   │   ├── translate-template-dialog.tsx  # Translation UI
-│   │   └── translation-settings.tsx       # Provider configuration
+│   │   ├── translation-settings.tsx       # Provider configuration
+│   │   └── placeholder-validation.tsx     # Placeholder validation display
 │   ├── tags/                     # Tag components
 │   └── senders/                  # Sender components
 │
@@ -426,11 +447,13 @@ reddrill/
 │   ├── api/
 │   │   └── mandrill.ts           # Mandrill API client
 │   ├── db/
-│   │   └── translation-settings-db.ts  # IndexedDB for settings
+│   │   ├── translation-settings-db.ts  # IndexedDB for settings
+│   │   └── test-scenarios-db.ts        # IndexedDB for test scenarios
 │   ├── hooks/                    # Custom React hooks
 │   ├── store/                    # Zustand state stores
 │   └── utils/
 │       ├── html-translator.ts    # HTML parsing for translation
+│       ├── placeholder-parser.ts # Placeholder detection & validation
 │       ├── template-parser.ts    # Parse {theme}_{locale} pattern
 │       └── template-tree.ts      # Build tree from templates
 │

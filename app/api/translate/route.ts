@@ -1,17 +1,23 @@
 /**
  * Translation API route supporting multiple providers
  * Cloudflare Workers AI, Google Cloud Translation, Azure Translator, Crowdin
+ * Includes automatic placeholder protection to preserve dynamic content
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
+import {
+  protectPlaceholders,
+  restorePlaceholders,
+  validatePlaceholders,
+} from '@/lib/utils/placeholder-parser';
 
 // Note: runtime config removed for cacheComponents compatibility in next.config.ts
 // This route runs in Node.js runtime by default
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, sourceLang, targetLang, provider = 'cloudflare', apiKey, projectId } = await request.json();
+    const { text, sourceLang, targetLang, provider = 'cloudflare', apiKey, projectId, protectPlaceholdersFlag = true } = await request.json();
 
     if (!text || !sourceLang || !targetLang) {
       return NextResponse.json(
@@ -20,11 +26,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Step 1: Protect placeholders before translation
+    const { protectedText, tokenMap } = protectPlaceholdersFlag
+      ? protectPlaceholders(text)
+      : { protectedText: text, tokenMap: new Map() };
+
+    // Step 2: Perform translation with protected text
     let translatedText: string;
 
     switch (provider) {
       case 'cloudflare':
-        translatedText = await translateWithCloudflare(text, sourceLang, targetLang, request);
+        translatedText = await translateWithCloudflare(protectedText, sourceLang, targetLang, request);
         break;
 
       case 'google':
@@ -34,7 +46,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        translatedText = await translateWithGoogle(text, sourceLang, targetLang, apiKey);
+        translatedText = await translateWithGoogle(protectedText, sourceLang, targetLang, apiKey);
         break;
 
       case 'azure':
@@ -44,7 +56,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        translatedText = await translateWithAzure(text, sourceLang, targetLang, apiKey);
+        translatedText = await translateWithAzure(protectedText, sourceLang, targetLang, apiKey);
         break;
 
       case 'crowdin':
@@ -54,7 +66,7 @@ export async function POST(request: NextRequest) {
             { status: 400 }
           );
         }
-        translatedText = await translateWithCrowdin(text, sourceLang, targetLang, apiKey, projectId);
+        translatedText = await translateWithCrowdin(protectedText, sourceLang, targetLang, apiKey, projectId);
         break;
 
       default:
@@ -64,7 +76,35 @@ export async function POST(request: NextRequest) {
         );
     }
 
-    return NextResponse.json({ translatedText });
+    // Step 3: Restore placeholders after translation
+    const restoredText = protectPlaceholdersFlag
+      ? restorePlaceholders(translatedText, tokenMap)
+      : translatedText;
+
+    // Step 4: Validate placeholders
+    const validation = protectPlaceholdersFlag
+      ? validatePlaceholders(text, restoredText)
+      : { isValid: true, warnings: [], missing: [], added: [], corrupted: [] };
+
+    // Debug logging
+    console.log('=== Translation Debug ===');
+    console.log('Original:', text);
+    console.log('Protected:', protectedText);
+    console.log('Translated:', translatedText);
+    console.log('Restored:', restoredText);
+    console.log('TokenMap:', Array.from(tokenMap.entries()));
+
+    return NextResponse.json({
+      translatedText: restoredText,
+      validation,
+      placeholderProtection: protectPlaceholdersFlag,
+      debug: {
+        original: text,
+        protected: protectedText,
+        translated: translatedText,
+        restored: restoredText,
+      }
+    });
   } catch (error) {
     console.error('Translation error:', error);
     return NextResponse.json(

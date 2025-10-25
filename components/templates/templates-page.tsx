@@ -26,6 +26,8 @@ import { ExportButton } from '@/components/templates/export-button';
 import { ImportButton } from '@/components/templates/import-button';
 import { importTemplates } from '@/lib/utils/template-import';
 import type { TemplateExportData } from '@/lib/utils/template-export';
+import { countPlaceholders } from '@/lib/utils/placeholder-parser';
+import { Badge } from '@/components/ui/badge';
 
 // Helper component for table rows with scroll functionality
 function TableRowWithRef({
@@ -465,6 +467,18 @@ export function TemplatesPage() {
                                 {label}
                               </span>
                             ))}
+                            {(() => {
+                              const count = countPlaceholders(template);
+                              return count > 0 ? (
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs"
+                                  title={`${count} placeholder${count !== 1 ? 's' : ''} detected`}
+                                >
+                                  {count} 🔀
+                                </Badge>
+                              ) : null;
+                            })()}
                           </div>
                         </TableCell>
                       <TableCell className="text-right !py-1">

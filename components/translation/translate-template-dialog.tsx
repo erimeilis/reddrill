@@ -10,9 +10,11 @@ import { IconCheck, IconAlertCircle, IconLoader, IconLanguage } from '@tabler/ic
 import { MandrillTemplateInfo } from '@/lib/api/mandrill';
 import mandrillClient from '@/lib/api/mandrill';
 import { getPrimaryProvider } from '@/lib/db/translation-settings-db';
-import { extractTranslatableText, reconstructHTML } from '@/lib/utils/html-translator';
 import { parseTemplateName } from '@/lib/utils/template-parser';
 import { createTemplate as createTemplateApi } from '@/lib/hooks/use-templates';
+import { PlaceholderValidationDisplay } from '@/components/translation/placeholder-validation';
+import { type PlaceholderValidation } from '@/lib/utils/placeholder-parser';
+import { extractTranslatableText, reconstructHTML } from '@/lib/utils/html-translator';
 
 interface TranslateTemplateDialogProps {
   template: MandrillTemplateInfo | null;
@@ -54,6 +56,7 @@ export function TranslateTemplateDialog({
   const [error, setError] = useState<string | null>(null);
   const [originalLines, setOriginalLines] = useState<string[]>([]);
   const [translatedLines, setTranslatedLines] = useState<string[]>([]);
+  const [validation, setValidation] = useState<PlaceholderValidation | null>(null);
 
   const sourceLang = template ? parseTemplateName(template.name).locale || 'en' : 'en';
 
@@ -68,6 +71,7 @@ export function TranslateTemplateDialog({
         setTranslatedLines([]);
         setTargetLang('es');
         setIsClosing(false);
+        setValidation(null);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -83,28 +87,19 @@ export function TranslateTemplateDialog({
       // Get primary provider (defaults to Cloudflare if none configured)
       const provider = await getPrimaryProvider();
 
-      // Extract translatable text segments
-      const { segments } = extractTranslatableText(template.code);
+      // Step 1: Decompose HTML into segments (tags, text, placeholders)
+      const { segments, translatableText } = extractTranslatableText(template.code);
 
-      // Get only text segments (not tags or placeholders)
-      const textSegments = segments.filter(seg => seg.type === 'text');
-
-      if (textSegments.length === 0) {
+      if (!translatableText) {
         throw new Error('No translatable text found in template');
       }
 
-      // Use a symbol delimiter that translation engines preserve
-      const DELIMITER = '║';
-
-      // Join all segments with delimiter
-      const combinedText = textSegments.map(seg => seg.content).join(DELIMITER);
-
-      // Translate all at once
+      // Step 2: Translate ONLY the text segments (API will protect placeholders)
       const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: combinedText,
+          text: translatableText,
           sourceLang,
           targetLang,
           provider: provider.provider,
@@ -114,7 +109,6 @@ export function TranslateTemplateDialog({
       });
 
       if (!response.ok) {
-        // Try to parse as JSON first, fall back to text
         let errorMessage = 'Translation failed';
         const contentType = response.headers.get('content-type');
 
@@ -136,22 +130,20 @@ export function TranslateTemplateDialog({
         throw new Error(errorMessage);
       }
 
-      const { translatedText } = await response.json();
+      const { translatedText, validation: validationResult } = await response.json();
 
-      // Split back by delimiter
-      const translatedSegments = translatedText.split(DELIMITER);
+      // Store validation results
+      if (validationResult) {
+        setValidation(validationResult);
+      }
 
-      // Reconstruct HTML with translated segments
-      const reconstructedText = translatedSegments.join('\n');
-      const newHtml = reconstructHTML(segments, reconstructedText);
-      setTranslatedHtml(newHtml);
+      // Step 3: Reconstruct HTML with translated text
+      const reconstructedHtml = reconstructHTML(segments, translatedText);
+      setTranslatedHtml(reconstructedHtml);
 
-      // Store lines for side-by-side comparison
-      const origLines = textSegments.map(seg => seg.content);
-      const transLines = translatedSegments;
-
-      setOriginalLines(origLines);
-      setTranslatedLines(transLines);
+      // For side-by-side comparison
+      setOriginalLines([translatableText]);
+      setTranslatedLines([translatedText]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Translation failed');
     } finally {
@@ -291,6 +283,9 @@ export function TranslateTemplateDialog({
                 <IconCheck className="h-4 w-4" />
                 <span className="text-sm">Translation complete! Review changes below.</span>
               </div>
+
+              {/* Placeholder Validation */}
+              {validation && <PlaceholderValidationDisplay validation={validation} />}
 
               {/* Side-by-side comparison */}
               {originalLines.length > 0 && (
