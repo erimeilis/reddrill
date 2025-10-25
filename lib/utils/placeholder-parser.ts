@@ -65,17 +65,17 @@ export const STANDARD_PLACEHOLDERS: Record<string, string> = {
  * Regular expressions for different placeholder formats
  */
 const PLACEHOLDER_PATTERNS = {
-  // Mailchimp format: *|VARIABLE|*
-  mailchimp: /\*\|([A-Z_][A-Z0-9_]*)\|\*/g,
+  // Mailchimp format: *|VARIABLE|* (supports uppercase and lowercase)
+  mailchimp: /\*\|([A-Za-z_][A-Za-z0-9_]*)\|\*/g,
 
   // Handlebars format: {{variable}}
   handlebars: /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g,
 
-  // Global vars: *|GLOBAL:VARIABLE|*
-  global: /\*\|GLOBAL:([A-Z_][A-Z0-9_]*)\|\*/g,
+  // Global vars: *|GLOBAL:VARIABLE|* (supports uppercase and lowercase)
+  global: /\*\|GLOBAL:([A-Za-z_][A-Za-z0-9_]*)\|\*/gi,
 
-  // Conditionals: *|IF:VAR|*, *|ELSEIF:VAR|*, *|ELSE:|*, *|END:IF|*
-  conditional: /\*\|(IF|ELSEIF|ELSE|END:IF):?([A-Z_][A-Z0-9_]*)?\|\*/g,
+  // Conditionals: *|IF:VAR|*, *|ELSEIF:VAR|*, *|ELSE:|*, *|END:IF|* (supports uppercase and lowercase)
+  conditional: /\*\|(IF|ELSEIF|ELSE|END:IF):?([A-Za-z_][A-Za-z0-9_]*)?\|\*/gi,
 };
 
 /**
