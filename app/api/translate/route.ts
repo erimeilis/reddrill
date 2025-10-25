@@ -86,10 +86,24 @@ export async function POST(request: NextRequest) {
       ? validatePlaceholders(text, restoredText)
       : { isValid: true, warnings: [], missing: [], added: [], corrupted: [] };
 
+    // Debug logging
+    console.log('=== Translation Debug ===');
+    console.log('Original:', text);
+    console.log('Protected:', protectedText);
+    console.log('Translated:', translatedText);
+    console.log('Restored:', restoredText);
+    console.log('TokenMap:', Array.from(tokenMap.entries()));
+
     return NextResponse.json({
       translatedText: restoredText,
       validation,
       placeholderProtection: protectPlaceholdersFlag,
+      debug: {
+        original: text,
+        protected: protectedText,
+        translated: translatedText,
+        restored: restoredText,
+      }
     });
   } catch (error) {
     console.error('Translation error:', error);

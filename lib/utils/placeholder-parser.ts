@@ -319,26 +319,16 @@ export function protectPlaceholders(text: string): {
   const reversedPlaceholders = [...placeholders].reverse();
 
   for (const [index, placeholder] of reversedPlaceholders.entries()) {
-    const token = `__PH_${placeholders.length - 1 - index}__`;
+    const phId = placeholders.length - 1 - index;
 
-    // Capture surrounding whitespace for storage only
-    let prefix = '';
-    let suffix = '';
+    // Use XML processing instruction format - translation services never touch these
+    // Format: <?ph0?> (standard XML PI that won't be translated or modified)
+    const token = `<?ph${phId}?>`;
 
-    // Check for leading space
-    if (placeholder.startIndex > 0 && /\s/.test(text[placeholder.startIndex - 1])) {
-      prefix = text[placeholder.startIndex - 1];
-    }
+    // Store the original placeholder
+    tokenMap.set(token, placeholder.raw);
 
-    // Check for trailing space
-    if (placeholder.endIndex < text.length && /\s/.test(text[placeholder.endIndex])) {
-      suffix = text[placeholder.endIndex];
-    }
-
-    // Store placeholder with surrounding spaces
-    tokenMap.set(token, prefix + placeholder.raw + suffix);
-
-    // Replace ONLY the placeholder (keep spaces in text for translation)
+    // Replace the placeholder with the token
     protectedText =
       protectedText.substring(0, placeholder.startIndex) +
       token +
@@ -350,7 +340,7 @@ export function protectPlaceholders(text: string): {
 
 /**
  * Restore placeholders from protection tokens after translation
- * Handles spacing intelligently to avoid double spaces
+ * Simple replacement since XML-style tags preserve spacing naturally
  */
 export function restorePlaceholders(
   text: string,
@@ -359,21 +349,8 @@ export function restorePlaceholders(
   let restored = text;
 
   for (const [token, original] of tokenMap.entries()) {
-    // Check if original has leading/trailing spaces
-    const hasLeadingSpace = original.startsWith(' ');
-    const hasTrailingSpace = original.endsWith(' ');
-
-    // Escape special regex characters in token
-    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
-    // Create regex that matches token with optional surrounding spaces
-    // If original has spaces, we want to consume spaces around the token to avoid doubling
-    const pattern = new RegExp(
-      `${hasLeadingSpace ? '\\s*' : ''}${escapedToken}${hasTrailingSpace ? '\\s*' : ''}`,
-      'g'
-    );
-
-    restored = restored.replace(pattern, original);
+    // Simple global replacement - spaces are preserved in the surrounding text
+    restored = restored.replaceAll(token, original);
   }
 
   return restored;

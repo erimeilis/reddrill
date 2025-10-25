@@ -18,7 +18,7 @@ export function extractTranslatableText(html: string): {
   translatableText: string;
 } {
   const segments: TextSegment[] = [];
-  let translatableText = '';
+  const translatableParts: string[] = [];
 
   // Regular expressions
   const tagRegex = /<[^>]+>/g;
@@ -38,7 +38,7 @@ export function extractTranslatableText(html: string): {
 
   // Find all placeholders
   let placeholderMatch;
-  placeholderRegex.lastIndex = 0; // Reset regex
+  placeholderRegex.lastIndex = 0;
   while ((placeholderMatch = placeholderRegex.exec(html)) !== null) {
     parts.push({
       type: 'placeholder',
@@ -55,43 +55,54 @@ export function extractTranslatableText(html: string): {
   for (const part of parts) {
     // Extract text before this part
     if (part.index > currentIndex) {
-      const textContent = html.substring(currentIndex, part.index).trim();
-      if (textContent) {
+      const textContent = html.substring(currentIndex, part.index);
+      // Only trim if adjacent to tag, not placeholder
+      const shouldTrim = part.type === 'tag';
+      const finalContent = shouldTrim ? textContent.trim() : textContent;
+
+      if (finalContent) {
         segments.push({
           type: 'text',
-          content: textContent,
-          original: textContent
+          content: finalContent,
+          original: finalContent
         });
-        translatableText += textContent + '\n';
+        translatableParts.push(finalContent);
       }
     }
 
-    // Add the tag or placeholder
+    // Add the segment
     segments.push({
       type: part.type as 'tag' | 'placeholder',
       content: part.content,
       original: part.content
     });
 
+    // Include placeholders in translatable text (not tags)
+    if (part.type === 'placeholder') {
+      translatableParts.push(part.content);
+    }
+
     currentIndex = part.index + part.content.length;
   }
 
   // Get remaining text after last part
   if (currentIndex < html.length) {
-    const textContent = html.substring(currentIndex).trim();
-    if (textContent) {
+    const textContent = html.substring(currentIndex);
+    const finalContent = textContent.trimEnd();
+
+    if (finalContent) {
       segments.push({
         type: 'text',
-        content: textContent,
-        original: textContent
+        content: finalContent,
+        original: finalContent
       });
-      translatableText += textContent + '\n';
+      translatableParts.push(finalContent);
     }
   }
 
   return {
     segments,
-    translatableText: translatableText.trim()
+    translatableText: translatableParts.join('')
   };
 }
 
@@ -102,20 +113,30 @@ export function reconstructHTML(
   segments: TextSegment[],
   translatedText: string
 ): string {
-  const translatedLines = translatedText.split('\n').map(line => line.trim()).filter(Boolean);
-  let lineIndex = 0;
   let result = '';
+  let textRemaining = translatedText;
 
   for (const segment of segments) {
-    if (segment.type === 'text') {
-      // Use translated text for text segments
-      result += translatedLines[lineIndex] || segment.original;
-      lineIndex++;
-    } else {
-      // Preserve tags and placeholders as-is
+    if (segment.type === 'tag') {
+      // Add tags as-is
       result += segment.original;
+    } else if (segment.type === 'placeholder') {
+      // Find placeholder in remaining text
+      const pos = textRemaining.indexOf(segment.original);
+      if (pos >= 0) {
+        // Add any translated text before the placeholder
+        result += textRemaining.substring(0, pos);
+        // Add the placeholder itself
+        result += segment.original;
+        // Continue after the placeholder
+        textRemaining = textRemaining.substring(pos + segment.original.length);
+      }
     }
+    // Text segments are implicitly handled when we add text before placeholders
   }
+
+  // Add any remaining translated text
+  result += textRemaining;
 
   return result;
 }
