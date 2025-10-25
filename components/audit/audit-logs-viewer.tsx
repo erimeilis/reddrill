@@ -13,6 +13,7 @@ import { IconSearch, IconFilter, IconRefresh, IconFileExport, IconX } from '@tab
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditLog, AuditLogFilter } from '@/lib/types/audit';
 import { formatDistanceToNow } from 'date-fns';
+import { AuditDetailModal } from './audit-detail-modal';
 
 export function AuditLogsViewer() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -26,6 +27,8 @@ export function AuditLogsViewer() {
     order_dir: 'DESC',
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
 
   useEffect(() => {
     loadLogs();
@@ -347,8 +350,8 @@ export function AuditLogsViewer() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          // TODO: Open detail modal
-                          console.log('View details:', log.id);
+                          setSelectedLogId(log.id);
+                          setModalOpen(true);
                         }}
                       >
                         Details
@@ -384,6 +387,17 @@ export function AuditLogsViewer() {
           </Button>
         </div>
       )}
+
+      {/* Audit Detail Modal */}
+      <AuditDetailModal
+        logId={selectedLogId}
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        onRestoreSuccess={() => {
+          setModalOpen(false);
+          loadLogs();
+        }}
+      />
     </div>
   );
 }
