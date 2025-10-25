@@ -6,7 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { TestDataForm, type TestData } from '@/components/templates/test-data-form';
 import { TemplatePreview } from '@/components/templates/template-preview';
 import { Button } from '@/components/ui/button';
-import { IconLoader, IconTestPipe } from '@tabler/icons-react';
+import { IconLoader, IconTestPipe, IconMail } from '@tabler/icons-react';
+import { SendTestDialog } from '@/components/templates/send-test-dialog';
 import mandrillClient from '@/lib/api/mandrill';
 import type { MandrillTemplateInfo } from '@/lib/api/mandrill';
 
@@ -21,6 +22,7 @@ export default function TemplateTestPage() {
     mergeVars: {},
     globalVars: {},
   });
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -75,9 +77,15 @@ export default function TemplateTestPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-6">
-        <div className="flex items-center gap-3 mb-2">
-          <IconTestPipe size={28} stroke={1.5} className="text-primary" />
-          <h1 className="text-2xl font-bold">Template Testing</h1>
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-3">
+            <IconTestPipe size={28} stroke={1.5} className="text-primary" />
+            <h1 className="text-2xl font-bold">Template Testing</h1>
+          </div>
+          <Button onClick={() => setSendDialogOpen(true)} className="gap-2">
+            <IconMail size={18} stroke={1.5} />
+            Send Test Email
+          </Button>
         </div>
         <p className="text-muted-foreground">
           Test <span className="font-mono font-medium">{template.name}</span> with dynamic data
@@ -102,6 +110,13 @@ export default function TemplateTestPage() {
           />
         </div>
       </div>
+
+      <SendTestDialog
+        isOpen={sendDialogOpen}
+        onClose={() => setSendDialogOpen(false)}
+        templateSlug={slug}
+        testData={testData}
+      />
     </div>
   );
 }
