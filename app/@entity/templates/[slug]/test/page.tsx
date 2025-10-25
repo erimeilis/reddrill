@@ -8,6 +8,7 @@ import { TemplatePreview } from '@/components/templates/template-preview';
 import { Button } from '@/components/ui/button';
 import { IconLoader, IconTestPipe, IconMail } from '@tabler/icons-react';
 import { SendTestDialog } from '@/components/templates/send-test-dialog';
+import { TestScenarioSelector } from '@/components/templates/test-scenario-selector';
 import mandrillClient from '@/lib/api/mandrill';
 import type { MandrillTemplateInfo } from '@/lib/api/mandrill';
 
@@ -95,6 +96,13 @@ export default function TemplateTestPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column: Test Data Form */}
         <div className="space-y-6">
+          <div className="flex justify-end">
+            <TestScenarioSelector
+              templateSlug={slug}
+              currentData={testData}
+              onLoadScenario={setTestData}
+            />
+          </div>
           <TestDataForm
             template={template}
             value={testData}
