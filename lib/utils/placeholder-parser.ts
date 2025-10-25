@@ -305,6 +305,7 @@ export function validatePlaceholders(
 
 /**
  * Replace placeholders with protection tokens for translation
+ * Preserves surrounding whitespace to prevent translation services from removing spaces
  */
 export function protectPlaceholders(text: string): {
   protectedText: string;
@@ -319,12 +320,32 @@ export function protectPlaceholders(text: string): {
 
   for (const [index, placeholder] of reversedPlaceholders.entries()) {
     const token = `__PH_${placeholders.length - 1 - index}__`;
-    tokenMap.set(token, placeholder.raw);
+
+    // Capture surrounding whitespace
+    let startIndex = placeholder.startIndex;
+    let endIndex = placeholder.endIndex;
+    let prefix = '';
+    let suffix = '';
+
+    // Capture leading space(s)
+    if (startIndex > 0 && /\s/.test(text[startIndex - 1])) {
+      prefix = text[startIndex - 1];
+      startIndex--;
+    }
+
+    // Capture trailing space(s)
+    if (endIndex < text.length && /\s/.test(text[endIndex])) {
+      suffix = text[endIndex];
+      endIndex++;
+    }
+
+    // Store placeholder with surrounding spaces
+    tokenMap.set(token, prefix + placeholder.raw + suffix);
 
     protectedText =
-      protectedText.substring(0, placeholder.startIndex) +
+      protectedText.substring(0, startIndex) +
       token +
-      protectedText.substring(placeholder.endIndex);
+      protectedText.substring(endIndex);
   }
 
   return { protectedText, tokenMap };
