@@ -22,6 +22,10 @@ import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PromptDialog } from '@/components/ui/prompt-dialog';
 import { useSettingsStore } from '@/lib/store/useSettingsStore';
+import { ExportButton } from '@/components/templates/export-button';
+import { ImportButton } from '@/components/templates/import-button';
+import { importTemplates } from '@/lib/utils/template-import';
+import type { TemplateExportData } from '@/lib/utils/template-export';
 
 // Helper component for table rows with scroll functionality
 function TableRowWithRef({
@@ -193,6 +197,21 @@ export function TemplatesPage() {
     router.push(`/templates/${slug}`);
   };
 
+  const handleImport = async (data: TemplateExportData) => {
+    try {
+      const result = await importTemplates(data, mandrillClient);
+
+      if (!result.success) {
+        throw new Error(`Import completed with errors:\n${result.errors.slice(0, 3).join('\n')}`);
+      }
+
+      // Refresh templates list after successful import
+      await refresh();
+    } catch (error) {
+      throw error;
+    }
+  };
+
   const handleCreateTemplate = async () => {
     const newName = prompt('Enter a name for the new template:');
     if (!newName || !newName.trim()) {
@@ -225,7 +244,7 @@ export function TemplatesPage() {
           <h1 className="text-2xl font-bold">Templates</h1>
           <div className="flex gap-2">
             {/* View mode toggle */}
-            <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg">
+            <div className="flex gap-px bg-secondary/50 rounded-lg p-px">
               <Button
                 variant={viewMode === 'table' ? 'default' : 'ghost'}
                 size="sm"
@@ -244,11 +263,22 @@ export function TemplatesPage() {
               </Button>
             </div>
 
+            <ExportButton
+              templates={templates || []}
+              disabled={loading}
+            />
+
+            <ImportButton
+              currentTemplateCount={(templates || []).length}
+              onImport={handleImport}
+              disabled={loading}
+            />
+
             <Button
               onClick={handleCreateTemplate}
               disabled={loading}
               title="Create New Template"
-              className="h-10"
+              size="sm"
             >
               <IconPlus size={18} className="mr-2" />
               Create New
@@ -258,7 +288,7 @@ export function TemplatesPage() {
               onClick={() => refresh()}
               disabled={loading}
               variant="icon"
-              size="icon"
+              size="sm"
               title="Refresh Templates"
             >
               {loading ? (

@@ -181,12 +181,12 @@ export function TemplateTreeView({
       {/* Controls */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         {/* Tree mode toggle */}
-        <div className="flex gap-1 bg-secondary/50 p-1 rounded-lg h-10">
+        <div className="flex gap-px bg-secondary/50 rounded-lg p-px">
           <Button
             variant={treeMode === 'theme-label-locale' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onTreeModeChange('theme-label-locale')}
-            className="text-xs h-full"
+            className="text-xs"
           >
             Theme First
           </Button>
@@ -194,7 +194,7 @@ export function TemplateTreeView({
             variant={treeMode === 'label-theme-locale' ? 'default' : 'ghost'}
             size="sm"
             onClick={() => onTreeModeChange('label-theme-locale')}
-            className="text-xs h-full"
+            className="text-xs"
           >
             Label First
           </Button>
@@ -206,7 +206,7 @@ export function TemplateTreeView({
             variant="outline"
             size="sm"
             onClick={handleExpandAll}
-            className="text-xs h-10"
+            className="text-xs"
           >
             <IconChevronDown size={14} className="mr-1" />
             Expand All
@@ -215,7 +215,7 @@ export function TemplateTreeView({
             variant="outline"
             size="sm"
             onClick={handleCollapseAll}
-            className="text-xs h-10"
+            className="text-xs"
           >
             <IconChevronRight size={14} className="mr-1" />
             Collapse All
@@ -229,7 +229,7 @@ export function TemplateTreeView({
             placeholder="Search tree..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10 h-10"
+            className="w-full pr-10 h-8"
           />
           <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
             <IconSearch size={16} />
