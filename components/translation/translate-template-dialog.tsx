@@ -13,6 +13,8 @@ import { getPrimaryProvider } from '@/lib/db/translation-settings-db';
 import { extractTranslatableText, reconstructHTML } from '@/lib/utils/html-translator';
 import { parseTemplateName } from '@/lib/utils/template-parser';
 import { createTemplate as createTemplateApi } from '@/lib/hooks/use-templates';
+import { PlaceholderValidationDisplay } from '@/components/translation/placeholder-validation';
+import { type PlaceholderValidation } from '@/lib/utils/placeholder-parser';
 
 interface TranslateTemplateDialogProps {
   template: MandrillTemplateInfo | null;
@@ -54,6 +56,7 @@ export function TranslateTemplateDialog({
   const [error, setError] = useState<string | null>(null);
   const [originalLines, setOriginalLines] = useState<string[]>([]);
   const [translatedLines, setTranslatedLines] = useState<string[]>([]);
+  const [validation, setValidation] = useState<PlaceholderValidation | null>(null);
 
   const sourceLang = template ? parseTemplateName(template.name).locale || 'en' : 'en';
 
@@ -68,6 +71,7 @@ export function TranslateTemplateDialog({
         setTranslatedLines([]);
         setTargetLang('es');
         setIsClosing(false);
+        setValidation(null);
       }, 300);
       return () => clearTimeout(timer);
     }
@@ -136,7 +140,12 @@ export function TranslateTemplateDialog({
         throw new Error(errorMessage);
       }
 
-      const { translatedText } = await response.json();
+      const { translatedText, validation: validationResult } = await response.json();
+
+      // Store validation results
+      if (validationResult) {
+        setValidation(validationResult);
+      }
 
       // Split back by delimiter
       const translatedSegments = translatedText.split(DELIMITER);
@@ -291,6 +300,9 @@ export function TranslateTemplateDialog({
                 <IconCheck className="h-4 w-4" />
                 <span className="text-sm">Translation complete! Review changes below.</span>
               </div>
+
+              {/* Placeholder Validation */}
+              {validation && <PlaceholderValidationDisplay validation={validation} />}
 
               {/* Side-by-side comparison */}
               {originalLines.length > 0 && (

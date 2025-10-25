@@ -8,6 +8,8 @@ import { MandrillTemplateInfo } from '@/lib/api/mandrill';
 import { IconPlus, IconX, IconLayoutGrid, IconTags, IconCheck } from '@tabler/icons-react';
 import mandrillClient from '@/lib/api/mandrill';
 import { useSettingsStore } from '@/lib/store/useSettingsStore';
+import { PlaceholderList } from '@/components/templates/placeholder-list';
+import { extractUniquePlaceholders } from '@/lib/utils/placeholder-parser';
 
 interface TemplateDetailProps {
   templateSlug: string | null;
@@ -167,6 +169,9 @@ export function TemplateDetail({ templateSlug, isOpen, onClose, onTemplateUpdate
                   </div>
                 </div>
               )}
+
+              {/* Placeholders */}
+              <PlaceholderList placeholders={extractUniquePlaceholders(template)} />
 
               <div>
                 <h3 className="text-base font-medium mb-3 flex items-center">
