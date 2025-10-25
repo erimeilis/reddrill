@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail, IconClipboardList } from '@tabler/icons-react';
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 
@@ -64,6 +64,7 @@ export function Navbar() {
     { href: '/templates', label: 'Templates', icon: <IconTemplate size={20} stroke={1.5} /> },
     { href: '/tags', label: 'Tags', icon: <IconTags size={20} stroke={1.5} /> },
     { href: '/senders', label: 'Senders', icon: <IconMail size={20} stroke={1.5} /> },
+    { href: '/audit', label: 'Audit Logs', icon: <IconClipboardList size={20} stroke={1.5} /> },
   ];
 
   const handleLogoutClick = () => {
