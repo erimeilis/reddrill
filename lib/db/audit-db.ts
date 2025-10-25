@@ -21,7 +21,7 @@ let prisma: PrismaClient | null = null;
 /**
  * Initialize Prisma Client with D1 adapter for Cloudflare Workers
  */
-export function initializePrisma(db: D1Database): PrismaClient {
+export function initializePrisma(db: any): PrismaClient {
   if (!prisma) {
     const adapter = new PrismaD1(db);
     prisma = new PrismaClient({ adapter });
@@ -50,16 +50,27 @@ export async function getSettings(client: PrismaClient): Promise<AuditSettings |
 
   if (!settings) {
     // Create default settings if not exists
-    return await client.auditSettings.create({
+    const created = await client.auditSettings.create({
       data: {
         id: 1,
         enabled: 0,
         retentionDays: 30,
       },
     });
+    return mapSettingsToType(created);
   }
 
-  return settings;
+  return mapSettingsToType(settings);
+}
+
+function mapSettingsToType(settings: any): AuditSettings {
+  return {
+    id: settings.id,
+    enabled: settings.enabled,
+    retention_days: settings.retentionDays,
+    user_identifier: settings.userIdentifier,
+    updated_at: settings.updatedAt.toISOString(),
+  };
 }
 
 export async function isEnabled(client: PrismaClient): Promise<boolean> {
@@ -69,15 +80,18 @@ export async function isEnabled(client: PrismaClient): Promise<boolean> {
 
 export async function updateSettings(
   client: PrismaClient,
-  updates: Partial<Omit<AuditSettings, 'id' | 'updatedAt'>>
+  updates: Partial<Omit<AuditSettings, 'id' | 'updated_at'>>
 ): Promise<AuditSettings> {
-  return await client.auditSettings.update({
+  const updated = await client.auditSettings.update({
     where: { id: 1 },
     data: {
-      ...updates,
+      enabled: updates.enabled,
+      retentionDays: updates.retention_days,
+      userIdentifier: updates.user_identifier,
       updatedAt: new Date(),
     },
   });
+  return mapSettingsToType(updated);
 }
 
 /**
@@ -155,6 +169,29 @@ export async function createBulkAuditLog(
  * Query Operations
  */
 
+function mapAuditLogToType(log: any): AuditLog {
+  return {
+    id: log.id,
+    created_at: log.createdAt.toISOString(),
+    operation_type: log.operationType,
+    operation_status: log.operationStatus,
+    operation_id: log.operationId,
+    template_slug: log.templateSlug,
+    template_name: log.templateName,
+    state_before: log.stateBefore,
+    state_after: log.stateAfter,
+    changes_summary: log.changesSummary,
+    user_identifier: log.userIdentifier,
+    error_message: log.errorMessage,
+    error_details: log.errorDetails,
+    bulk_operation: log.bulkOperation,
+    bulk_total_count: log.bulkTotalCount,
+    bulk_success_count: log.bulkSuccessCount,
+    bulk_failure_count: log.bulkFailureCount,
+    search_text: log.searchText,
+  };
+}
+
 export async function getAuditLogs(
   client: PrismaClient,
   filter?: AuditLogFilter
@@ -186,7 +223,7 @@ export async function getAuditLogs(
   const orderBy = filter?.order_by || 'createdAt';
   const orderDir = filter?.order_dir || 'DESC';
 
-  return await client.auditLog.findMany({
+  const logs = await client.auditLog.findMany({
     where,
     orderBy: {
       [orderBy]: orderDir.toLowerCase(),
@@ -194,15 +231,18 @@ export async function getAuditLogs(
     take: filter?.limit || 50,
     skip: filter?.offset || 0,
   });
+
+  return logs.map(mapAuditLogToType);
 }
 
 export async function getAuditLogById(
   client: PrismaClient,
   id: number
 ): Promise<AuditLog | null> {
-  return await client.auditLog.findUnique({
+  const log = await client.auditLog.findUnique({
     where: { id },
   });
+  return log ? mapAuditLogToType(log) : null;
 }
 
 export async function searchAuditLogs(
@@ -222,7 +262,7 @@ export async function searchAuditLogs(
     where.operationStatus = filter.status;
   }
 
-  return await client.auditLog.findMany({
+  const logs = await client.auditLog.findMany({
     where,
     orderBy: {
       createdAt: 'desc',
@@ -230,13 +270,15 @@ export async function searchAuditLogs(
     take: filter?.limit || 50,
     skip: filter?.offset || 0,
   });
+
+  return logs.map(mapAuditLogToType);
 }
 
 export async function getAuditLogsByTemplate(
   client: PrismaClient,
   templateName: string
 ): Promise<AuditLog[]> {
-  return await client.auditLog.findMany({
+  const logs = await client.auditLog.findMany({
     where: {
       templateName,
     },
@@ -244,6 +286,8 @@ export async function getAuditLogsByTemplate(
       createdAt: 'desc',
     },
   });
+
+  return logs.map(mapAuditLogToType);
 }
 
 /**

@@ -191,9 +191,9 @@ export async function prepareRestore(
 
     // For delete operations, restore from state_before
     // For update operations, restore from state_before
-    const stateToRestore = auditLog.operationType === 'delete'
-      ? auditLog.stateBefore
-      : auditLog.stateBefore;
+    const stateToRestore = auditLog.operation_type === 'delete'
+      ? auditLog.state_before
+      : auditLog.state_before;
 
     if (!stateToRestore) {
       return {
