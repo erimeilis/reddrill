@@ -321,31 +321,28 @@ export function protectPlaceholders(text: string): {
   for (const [index, placeholder] of reversedPlaceholders.entries()) {
     const token = `__PH_${placeholders.length - 1 - index}__`;
 
-    // Capture surrounding whitespace
-    let startIndex = placeholder.startIndex;
-    let endIndex = placeholder.endIndex;
+    // Capture surrounding whitespace for storage only
     let prefix = '';
     let suffix = '';
 
-    // Capture leading space(s)
-    if (startIndex > 0 && /\s/.test(text[startIndex - 1])) {
-      prefix = text[startIndex - 1];
-      startIndex--;
+    // Check for leading space
+    if (placeholder.startIndex > 0 && /\s/.test(text[placeholder.startIndex - 1])) {
+      prefix = text[placeholder.startIndex - 1];
     }
 
-    // Capture trailing space(s)
-    if (endIndex < text.length && /\s/.test(text[endIndex])) {
-      suffix = text[endIndex];
-      endIndex++;
+    // Check for trailing space
+    if (placeholder.endIndex < text.length && /\s/.test(text[placeholder.endIndex])) {
+      suffix = text[placeholder.endIndex];
     }
 
     // Store placeholder with surrounding spaces
     tokenMap.set(token, prefix + placeholder.raw + suffix);
 
+    // Replace ONLY the placeholder (keep spaces in text for translation)
     protectedText =
-      protectedText.substring(0, startIndex) +
+      protectedText.substring(0, placeholder.startIndex) +
       token +
-      protectedText.substring(endIndex);
+      protectedText.substring(placeholder.endIndex);
   }
 
   return { protectedText, tokenMap };
@@ -353,6 +350,7 @@ export function protectPlaceholders(text: string): {
 
 /**
  * Restore placeholders from protection tokens after translation
+ * Handles spacing intelligently to avoid double spaces
  */
 export function restorePlaceholders(
   text: string,
@@ -361,7 +359,21 @@ export function restorePlaceholders(
   let restored = text;
 
   for (const [token, original] of tokenMap.entries()) {
-    restored = restored.replaceAll(token, original);
+    // Check if original has leading/trailing spaces
+    const hasLeadingSpace = original.startsWith(' ');
+    const hasTrailingSpace = original.endsWith(' ');
+
+    // Escape special regex characters in token
+    const escapedToken = token.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    // Create regex that matches token with optional surrounding spaces
+    // If original has spaces, we want to consume spaces around the token to avoid doubling
+    const pattern = new RegExp(
+      `${hasLeadingSpace ? '\\s*' : ''}${escapedToken}${hasTrailingSpace ? '\\s*' : ''}`,
+      'g'
+    );
+
+    restored = restored.replace(pattern, original);
   }
 
   return restored;
