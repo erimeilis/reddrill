@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import useSWR, { mutate } from 'swr';
 import mandrillClient, { type MandrillTemplate, type MandrillTemplateInfo } from '@/lib/api/mandrill';
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
+import type { AuditLogEntry } from '@/lib/types/audit';
 
 // Fetcher function that uses mandrillClient directly (client-side only!)
 const fetcher = async () => {
@@ -98,6 +99,23 @@ export async function createTemplate(
     labels
   );
 
+  // Log audit trail
+  try {
+    await fetch('/api/audit/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        operationType: 'create',
+        templateName: name,
+        templateSlug: newTemplate.slug,
+        stateAfter: newTemplate,
+        operationStatus: 'success',
+      } as AuditLogEntry),
+    });
+  } catch (error) {
+    console.error('Failed to log audit trail:', error);
+  }
+
   // Update SWR cache with the new template in sorted position
   await mutate(
     'templates',
@@ -140,6 +158,14 @@ export async function updateTemplate(
     throw new Error('Mandrill client not initialized');
   }
 
+  // Get current state before update for audit trail
+  let stateBefore: MandrillTemplateInfo | null = null;
+  try {
+    stateBefore = await mandrillClient.getTemplateInfo(slug);
+  } catch (error) {
+    console.error('Failed to fetch template before state:', error);
+  }
+
   // Perform the update via Mandrill API
   const result = await mandrillClient.updateTemplate(
     slug,
@@ -150,6 +176,48 @@ export async function updateTemplate(
     text,
     labels
   );
+
+  // Log audit trail
+  if (stateBefore) {
+    try {
+      // Calculate changes
+      const changes = [];
+      if (stateBefore.code !== result.code) {
+        changes.push({ field: 'code', oldValue: stateBefore.code, newValue: result.code });
+      }
+      if (stateBefore.subject !== result.subject) {
+        changes.push({ field: 'subject', oldValue: stateBefore.subject, newValue: result.subject });
+      }
+      if (stateBefore.from_email !== result.from_email) {
+        changes.push({ field: 'from_email', oldValue: stateBefore.from_email, newValue: result.from_email });
+      }
+      if (stateBefore.from_name !== result.from_name) {
+        changes.push({ field: 'from_name', oldValue: stateBefore.from_name, newValue: result.from_name });
+      }
+      if (stateBefore.text !== result.text) {
+        changes.push({ field: 'text', oldValue: stateBefore.text, newValue: result.text });
+      }
+      if (JSON.stringify(stateBefore.labels) !== JSON.stringify(result.labels)) {
+        changes.push({ field: 'labels', oldValue: stateBefore.labels, newValue: result.labels });
+      }
+
+      await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operationType: 'update',
+          templateName: result.name,
+          templateSlug: result.slug,
+          stateBefore,
+          stateAfter: result,
+          changesSummary: changes.length > 0 ? changes : null,
+          operationStatus: 'success',
+        } as AuditLogEntry),
+      });
+    } catch (error) {
+      console.error('Failed to log audit trail:', error);
+    }
+  }
 
   // Invalidate caches
   await mutate('templates');
@@ -163,8 +231,35 @@ export async function deleteTemplate(slug: string) {
     throw new Error('Mandrill client not initialized');
   }
 
+  // Get current state before delete for audit trail
+  let stateBefore: MandrillTemplateInfo | null = null;
+  try {
+    stateBefore = await mandrillClient.getTemplateInfo(slug);
+  } catch (error) {
+    console.error('Failed to fetch template before state:', error);
+  }
+
   // Perform the actual delete via Mandrill API
   const result = await mandrillClient.deleteTemplate(slug);
+
+  // Log audit trail
+  if (stateBefore) {
+    try {
+      await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          operationType: 'delete',
+          templateName: stateBefore.name,
+          templateSlug: stateBefore.slug,
+          stateBefore,
+          operationStatus: 'success',
+        } as AuditLogEntry),
+      });
+    } catch (error) {
+      console.error('Failed to log audit trail:', error);
+    }
+  }
 
   // Optimistically update cache to remove deleted template immediately
   await mutate(

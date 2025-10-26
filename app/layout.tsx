@@ -3,7 +3,7 @@ import { DM_Sans } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Navbar } from "@/components/navbar";
+import { NavbarWrapper } from "@/components/navbar-wrapper";
 import { StyleProvider } from "@/components/style-provider";
 import { MandrillConnect } from "@/components/mandrill-connect";
 import { ShowWhenConnected } from "@/components/show";
@@ -59,7 +59,7 @@ export default function RootLayout({
           <StyleProvider />
           <div className="flex flex-col min-h-screen">
             <Suspense fallback={<div className="h-16 border-b border-border"></div>}>
-              <Navbar />
+              <NavbarWrapper />
             </Suspense>
             <main className="flex-1">
               <ShowWhenConnected

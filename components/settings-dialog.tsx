@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { IconSettings } from '@tabler/icons-react';
 import { TranslationSettings } from '@/components/translation/translation-settings';
+import { AuditSettingsComponent } from '@/components/audit/audit-settings';
 
 export function SettingsDialog() {
   const [open, setOpen] = useState(false);
@@ -21,16 +23,25 @@ export function SettingsDialog() {
           <IconSettings size={20} stroke={1.5} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure translation providers and other settings
+            Configure translation providers, audit trail, and other settings
           </DialogDescription>
         </DialogHeader>
-        <div className="py-4">
-          <TranslationSettings />
-        </div>
+        <Tabs defaultValue="translation" className="py-4">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="translation">Translation</TabsTrigger>
+            <TabsTrigger value="audit">Audit Trail</TabsTrigger>
+          </TabsList>
+          <TabsContent value="translation" className="mt-4">
+            <TranslationSettings />
+          </TabsContent>
+          <TabsContent value="audit" className="mt-4">
+            <AuditSettingsComponent />
+          </TabsContent>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

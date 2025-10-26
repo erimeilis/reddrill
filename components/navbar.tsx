@@ -17,11 +17,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail, IconClipboardList } from '@tabler/icons-react';
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 
-export function Navbar() {
+interface NavbarProps {
+  auditEnabled: boolean;
+}
+
+export function Navbar({ auditEnabled }: NavbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const pathname = usePathname();
@@ -60,11 +64,15 @@ export function Navbar() {
   };
 
   // Navigation items
-  const navItems = [
+  const allNavItems = [
     { href: '/templates', label: 'Templates', icon: <IconTemplate size={20} stroke={1.5} /> },
     { href: '/tags', label: 'Tags', icon: <IconTags size={20} stroke={1.5} /> },
     { href: '/senders', label: 'Senders', icon: <IconMail size={20} stroke={1.5} /> },
+    { href: '/audit', label: 'Audit Logs', icon: <IconClipboardList size={20} stroke={1.5} />, requiresAudit: true },
   ];
+
+  // Filter nav items based on audit settings
+  const navItems = allNavItems.filter(item => !item.requiresAudit || auditEnabled);
 
   const handleLogoutClick = () => {
     setShowLogoutDialog(true);
