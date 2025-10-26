@@ -41,48 +41,48 @@ export type AuditOperationStatus = 'success' | 'failure' | 'partial';
 // Audit Log Entry (database row)
 export interface AuditLog {
   id: number;
-  created_at: string;
+  createdAt: string;
 
   // Operation metadata
-  operation_type: AuditOperationType;
-  operation_status: AuditOperationStatus;
-  operation_id: string | null;
+  operationType: AuditOperationType;
+  operationStatus: AuditOperationStatus;
+  operationId: string | null;
 
   // Template identification
-  template_slug: string | null;
-  template_name: string;
+  templateSlug: string | null;
+  templateName: string;
 
   // State snapshots (JSON strings in DB)
-  state_before: string | null;
-  state_after: string | null;
+  stateBefore: string | null;
+  stateAfter: string | null;
 
   // Change details
-  changes_summary: string | null;
+  changesSummary: string | null;
 
   // User context
-  user_identifier: string | null;
+  userIdentifier: string | null;
 
   // Error tracking
-  error_message: string | null;
-  error_details: string | null;
+  errorMessage: string | null;
+  errorDetails: string | null;
 
   // Bulk operation metadata
-  bulk_operation: number; // SQLite boolean (0 or 1)
-  bulk_total_count: number | null;
-  bulk_success_count: number | null;
-  bulk_failure_count: number | null;
+  bulkOperation: number; // SQLite boolean (0 or 1)
+  bulkTotalCount: number | null;
+  bulkSuccessCount: number | null;
+  bulkFailureCount: number | null;
 
   // Searchability
-  search_text: string | null;
+  searchText: string | null;
 }
 
 // Audit Settings
 export interface AuditSettings {
   id: number;
   enabled: number; // SQLite boolean (0 or 1)
-  retention_days: number; // -1 = forever
-  user_identifier: string | null;
-  updated_at: string;
+  retentionDays: number; // -1 = forever
+  userIdentifier: string | null;
+  updatedAt: string;
 }
 
 // Template state for audit snapshots
@@ -117,26 +117,26 @@ export interface AuditChange {
 
 // Audit log entry for creation
 export interface AuditLogEntry {
-  operation_type: AuditOperationType;
-  operation_status: AuditOperationStatus;
-  operation_id?: string;
-  template_slug?: string;
-  template_name: string;
-  state_before?: AuditTemplateState | null;
-  state_after?: AuditTemplateState | null;
-  changes_summary?: AuditChange[];
-  user_identifier?: string;
-  error_message?: string;
-  error_details?: any;
+  operationType: AuditOperationType;
+  operationStatus: AuditOperationStatus;
+  operationId?: string;
+  templateSlug?: string;
+  templateName: string;
+  stateBefore?: AuditTemplateState | null;
+  stateAfter?: AuditTemplateState | null;
+  changesSummary?: AuditChange[];
+  userIdentifier?: string;
+  errorMessage?: string;
+  errorDetails?: any;
 }
 
 // Bulk audit log entry
 export interface BulkAuditLogEntry extends AuditLogEntry {
-  bulk_operation: true;
-  bulk_total_count: number;
-  bulk_success_count: number;
-  bulk_failure_count: number;
-  bulk_details?: BulkOperationDetail[];
+  bulkOperation: true;
+  bulkTotalCount: number;
+  bulkSuccessCount: number;
+  bulkFailureCount: number;
+  bulkDetails?: BulkOperationDetail[];
 }
 
 // Bulk operation detail
@@ -148,23 +148,23 @@ export interface BulkOperationDetail {
 
 // Filter for querying audit logs
 export interface AuditLogFilter {
-  operation_type?: AuditOperationType;
-  template_name?: string;
-  date_from?: string;
-  date_to?: string;
+  operationType?: AuditOperationType;
+  templateName?: string;
+  dateFrom?: string;
+  dateTo?: string;
   status?: AuditOperationStatus;
   limit?: number;
   offset?: number;
-  order_by?: 'created_at' | 'template_name' | 'operation_type';
-  order_dir?: 'ASC' | 'DESC';
+  orderBy?: 'createdAt' | 'templateName' | 'operationType';
+  orderDir?: 'ASC' | 'DESC';
 }
 
 // Audit statistics
 export interface AuditStats {
-  total_logs: number;
-  by_operation: Record<AuditOperationType, number>;
-  oldest_entry: string | null;
-  storage_size_mb: number;
+  totalLogs: number;
+  byOperation: Record<AuditOperationType, number>;
+  oldestEntry: string | null;
+  storageSizeMb: number;
 }
 
 // Restore options

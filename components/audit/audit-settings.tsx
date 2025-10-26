@@ -1,16 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { IconCheck, IconAlertCircle, IconTrash, IconRefresh } from '@tabler/icons-react';
+import { IconCheck, IconAlertCircle, IconTrash, IconRefresh, IconAlertTriangle, IconX, IconInfinity } from '@tabler/icons-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditSettings } from '@/lib/types/audit';
 
 export function AuditSettingsComponent() {
+  const router = useRouter();
   const [settings, setSettings] = useState<AuditSettings | null>(null);
   const [enabled, setEnabled] = useState<boolean>(false);
   const [retentionDays, setRetentionDays] = useState<number>(30);
@@ -35,8 +37,8 @@ export function AuditSettingsComponent() {
       const data: AuditSettings = await response.json();
       setSettings(data);
       setEnabled(data.enabled === 1);
-      setRetentionDays(data.retention_days);
-      setUserIdentifier(data.user_identifier || '');
+      setRetentionDays(data.retentionDays);
+      setUserIdentifier(data.userIdentifier || '');
     } catch (error) {
       console.error('Failed to load audit settings:', error);
       setMessage({ type: 'error', text: 'Failed to load settings' });
@@ -72,6 +74,9 @@ export function AuditSettingsComponent() {
       const result = await response.json();
       setSettings(result.settings);
       setMessage({ type: 'success', text: 'Settings saved successfully' });
+
+      // Refresh the router to update navbar and other components (Next.js 16)
+      router.refresh();
     } catch (error) {
       console.error('Failed to save settings:', error);
       setMessage({
@@ -117,7 +122,7 @@ export function AuditSettingsComponent() {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('⚠️ WARNING: This will delete ALL audit logs permanently. Are you sure?')) {
+    if (!confirm('WARNING: This will delete ALL audit logs permanently. Are you sure?')) {
       return;
     }
 
@@ -201,8 +206,18 @@ export function AuditSettingsComponent() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="enabled">✅ Enabled - Track all operations</SelectItem>
-                <SelectItem value="disabled">❌ Disabled - No tracking</SelectItem>
+                <SelectItem value="enabled">
+                  <div className="flex items-center gap-2">
+                    <IconCheck className="h-4 w-4 text-green-600" />
+                    Enabled - Track all operations
+                  </div>
+                </SelectItem>
+                <SelectItem value="disabled">
+                  <div className="flex items-center gap-2">
+                    <IconX className="h-4 w-4 text-red-600" />
+                    Disabled - No tracking
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
@@ -228,7 +243,12 @@ export function AuditSettingsComponent() {
                 <SelectItem value="90">90 days</SelectItem>
                 <SelectItem value="180">180 days (6 months)</SelectItem>
                 <SelectItem value="365">365 days (1 year)</SelectItem>
-                <SelectItem value="-1">♾️ Forever (no automatic cleanup)</SelectItem>
+                <SelectItem value="-1">
+                  <div className="flex items-center gap-2">
+                    <IconInfinity className="h-4 w-4" />
+                    Forever (no automatic cleanup)
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-sm text-muted-foreground">
@@ -304,7 +324,7 @@ export function AuditSettingsComponent() {
           <p className="text-sm text-muted-foreground">
             <strong>Clean Up Old Logs:</strong> Removes logs older than the retention period.
             <br />
-            <strong>Clear All Logs:</strong> Permanently deletes ALL audit logs (⚠️ cannot be undone).
+            <strong>Clear All Logs:</strong> Permanently deletes ALL audit logs (cannot be undone).
           </p>
         </CardContent>
       </Card>

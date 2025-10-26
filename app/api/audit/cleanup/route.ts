@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const retentionDays = settings.retention_days;
+    const retentionDays = settings.retentionDays;
 
     if (retentionDays === -1) {
       return NextResponse.json({

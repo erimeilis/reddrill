@@ -125,14 +125,9 @@ export function AuditDetailModal({
       partial: 'secondary',
       failure: 'destructive',
     };
-    const colors: Record<string, string> = {
-      success: '✅',
-      partial: '⚠️',
-      failure: '❌',
-    };
     return (
       <Badge variant={variants[status] || 'secondary'}>
-        {colors[status]} {status}
+        {status}
       </Badge>
     );
   };
@@ -173,10 +168,10 @@ export function AuditDetailModal({
     );
   }
 
-  const stateBefore = parseState(log.state_before);
-  const stateAfter = parseState(log.state_after);
-  const changes = parseChanges(log.changes_summary);
-  const canRestore = log.operation_type === 'delete' || log.operation_type === 'update';
+  const stateBefore = parseState(log.stateBefore);
+  const stateAfter = parseState(log.stateAfter);
+  const changes = parseChanges(log.changesSummary);
+  const canRestore = log.operationType === 'delete' || log.operationType === 'update';
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -206,44 +201,44 @@ export function AuditDetailModal({
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="space-y-2">
-                  <CardTitle className="text-lg">{log.template_name}</CardTitle>
+                  <CardTitle className="text-lg">{log.templateName}</CardTitle>
                   <CardDescription className="space-x-2">
-                    {getOperationBadge(log.operation_type)}
-                    {getStatusBadge(log.operation_status)}
-                    {log.bulk_operation === 1 && (
+                    {getOperationBadge(log.operationType)}
+                    {getStatusBadge(log.operationStatus)}
+                    {log.bulkOperation === 1 && (
                       <Badge variant="outline">
-                        Bulk ({log.bulk_success_count}/{log.bulk_total_count})
+                        Bulk ({log.bulkSuccessCount}/{log.bulkTotalCount})
                       </Badge>
                     )}
                   </CardDescription>
                 </div>
                 <div className="text-sm text-muted-foreground text-right">
-                  <div>{formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}</div>
-                  <div className="font-mono text-xs mt-1">{log.created_at}</div>
+                  <div>{formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}</div>
+                  <div className="font-mono text-xs mt-1">{log.createdAt}</div>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {log.template_slug && (
+              {log.templateSlug && (
                 <div>
-                  <strong>Slug:</strong> <code className="text-sm">{log.template_slug}</code>
+                  <strong>Slug:</strong> <code className="text-sm">{log.templateSlug}</code>
                 </div>
               )}
-              {log.user_identifier && (
+              {log.userIdentifier && (
                 <div>
-                  <strong>User:</strong> {log.user_identifier}
+                  <strong>User:</strong> {log.userIdentifier}
                 </div>
               )}
-              {log.operation_id && (
+              {log.operationId && (
                 <div>
-                  <strong>Operation ID:</strong> <code className="text-sm">{log.operation_id}</code>
+                  <strong>Operation ID:</strong> <code className="text-sm">{log.operationId}</code>
                 </div>
               )}
-              {log.error_message && (
+              {log.errorMessage && (
                 <Alert variant="destructive">
                   <IconAlertCircle className="h-4 w-4" />
                   <AlertDescription>
-                    <strong>Error:</strong> {log.error_message}
+                    <strong>Error:</strong> {log.errorMessage}
                   </AlertDescription>
                 </Alert>
               )}
@@ -317,7 +312,7 @@ export function AuditDetailModal({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(formatJson(log.state_before) || '')}
+                        onClick={() => copyToClipboard(formatJson(log.stateBefore) || '')}
                       >
                         <IconCopy className="mr-2 h-4 w-4" />
                         Copy
@@ -325,8 +320,8 @@ export function AuditDetailModal({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto">
-                      {formatJson(log.state_before)}
+                    <pre className="p-4 bg-muted rounded-lg text-xs max-h-[500px] overflow-y-auto whitespace-pre-wrap break-all">
+                      {formatJson(log.stateBefore)}
                     </pre>
                   </CardContent>
                 </Card>
@@ -349,7 +344,7 @@ export function AuditDetailModal({
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => copyToClipboard(formatJson(log.state_after) || '')}
+                        onClick={() => copyToClipboard(formatJson(log.stateAfter) || '')}
                       >
                         <IconCopy className="mr-2 h-4 w-4" />
                         Copy
@@ -357,8 +352,8 @@ export function AuditDetailModal({
                     </div>
                   </CardHeader>
                   <CardContent>
-                    <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto">
-                      {formatJson(log.state_after)}
+                    <pre className="p-4 bg-muted rounded-lg text-xs max-h-[500px] overflow-y-auto whitespace-pre-wrap break-all">
+                      {formatJson(log.stateAfter)}
                     </pre>
                   </CardContent>
                 </Card>
@@ -388,7 +383,7 @@ export function AuditDetailModal({
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <pre className="p-4 bg-muted rounded-lg text-xs overflow-x-auto">
+                  <pre className="p-4 bg-muted rounded-lg text-xs max-h-[500px] overflow-y-auto whitespace-pre-wrap break-all">
                     {JSON.stringify(log, null, 2)}
                   </pre>
                 </CardContent>

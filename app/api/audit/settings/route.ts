@@ -55,9 +55,9 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (updates.retention_days !== undefined) {
-      if (typeof updates.retention_days !== 'number' ||
-          (updates.retention_days < -1 && updates.retention_days !== -1)) {
+    if (updates.retentionDays !== undefined) {
+      if (typeof updates.retentionDays !== 'number' ||
+          (updates.retentionDays < -1 && updates.retentionDays !== -1)) {
         return NextResponse.json(
           { error: 'retention_days must be -1 (forever) or a positive number' },
           { status: 400 }

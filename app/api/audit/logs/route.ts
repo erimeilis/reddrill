@@ -27,12 +27,12 @@ export async function GET(request: NextRequest) {
 
     const operationType = searchParams.get('operation_type');
     if (operationType) {
-      filter.operation_type = operationType as any;
+      filter.operationType = operationType as any;
     }
 
     const templateName = searchParams.get('template_name');
     if (templateName) {
-      filter.template_name = templateName;
+      filter.templateName = templateName;
     }
 
     const status = searchParams.get('status');
@@ -42,12 +42,12 @@ export async function GET(request: NextRequest) {
 
     const dateFrom = searchParams.get('date_from');
     if (dateFrom) {
-      filter.date_from = dateFrom;
+      filter.dateFrom = dateFrom;
     }
 
     const dateTo = searchParams.get('date_to');
     if (dateTo) {
-      filter.date_to = dateTo;
+      filter.dateTo = dateTo;
     }
 
     const limit = searchParams.get('limit');
@@ -62,12 +62,21 @@ export async function GET(request: NextRequest) {
 
     const orderBy = searchParams.get('order_by');
     if (orderBy) {
-      filter.order_by = orderBy as any;
+      // Convert snake_case to camelCase for Prisma
+      const orderByMapping: Record<string, 'createdAt' | 'templateName' | 'operationType'> = {
+        'created_at': 'createdAt',
+        'template_name': 'templateName',
+        'operation_type': 'operationType',
+        'createdAt': 'createdAt',
+        'templateName': 'templateName',
+        'operationType': 'operationType',
+      };
+      filter.orderBy = orderByMapping[orderBy] || 'createdAt';
     }
 
     const orderDir = searchParams.get('order_dir');
     if (orderDir) {
-      filter.order_dir = orderDir.toUpperCase() as any;
+      filter.orderDir = orderDir.toUpperCase() as any;
     }
 
     const logs = await getAuditLogs(prisma, filter);

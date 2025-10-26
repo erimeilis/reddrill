@@ -23,8 +23,8 @@ export function AuditLogsViewer() {
   const [filter, setFilter] = useState<AuditLogFilter>({
     limit: 50,
     offset: 0,
-    order_by: 'created_at',
-    order_dir: 'DESC',
+    orderBy: 'createdAt',
+    orderDir: 'DESC',
   });
   const [showFilters, setShowFilters] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
@@ -40,15 +40,15 @@ export function AuditLogsViewer() {
 
     try {
       const params = new URLSearchParams();
-      if (filter.operation_type) params.set('operation_type', filter.operation_type);
-      if (filter.template_name) params.set('template_name', filter.template_name);
+      if (filter.operationType) params.set('operation_type', filter.operationType);
+      if (filter.templateName) params.set('template_name', filter.templateName);
       if (filter.status) params.set('status', filter.status);
-      if (filter.date_from) params.set('date_from', filter.date_from);
-      if (filter.date_to) params.set('date_to', filter.date_to);
+      if (filter.dateFrom) params.set('date_from', filter.dateFrom);
+      if (filter.dateTo) params.set('date_to', filter.dateTo);
       if (filter.limit) params.set('limit', filter.limit.toString());
       if (filter.offset) params.set('offset', filter.offset.toString());
-      if (filter.order_by) params.set('order_by', filter.order_by);
-      if (filter.order_dir) params.set('order_dir', filter.order_dir);
+      if (filter.orderBy) params.set('order_by', filter.orderBy);
+      if (filter.orderDir) params.set('order_dir', filter.orderDir);
 
       const response = await fetch(`/api/audit/logs?${params.toString()}`);
       if (!response.ok) {
@@ -104,8 +104,8 @@ export function AuditLogsViewer() {
     setFilter({
       limit: 50,
       offset: 0,
-      order_by: 'created_at',
-      order_dir: 'DESC',
+      orderBy: 'createdAt',
+      orderDir: 'DESC',
     });
     setSearchQuery('');
   };
@@ -127,38 +127,36 @@ export function AuditLogsViewer() {
       partial: 'secondary',
       failure: 'destructive',
     };
-    const colors: Record<string, string> = {
-      success: '✅',
-      partial: '⚠️',
-      failure: '❌',
-    };
     return (
       <Badge variant={variants[status] || 'secondary'}>
-        {colors[status]} {status}
+        {status}
       </Badge>
     );
   };
 
   if (loading && logs.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Audit Logs</CardTitle>
-          <CardDescription>Loading logs...</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="container mx-auto px-4 py-4 sm:py-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Audit Logs</CardTitle>
+            <CardDescription>Loading logs...</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="container mx-auto px-4 py-4 sm:py-6">
+      <div className="space-y-4">
       {/* Header with Search */}
       <Card>
         <CardHeader>
@@ -209,7 +207,7 @@ export function AuditLogsViewer() {
               <IconSearch className="mr-2 h-4 w-4" />
               Search
             </Button>
-            {(searchQuery || filter.operation_type || filter.status) && (
+            {(searchQuery || filter.operationType || filter.status) && (
               <Button variant="outline" onClick={clearFilters}>
                 <IconX className="mr-2 h-4 w-4" />
                 Clear
@@ -223,9 +221,9 @@ export function AuditLogsViewer() {
               <div className="space-y-2">
                 <Label>Operation Type</Label>
                 <Select
-                  value={filter.operation_type || 'all'}
+                  value={filter.operationType || 'all'}
                   onValueChange={(value) =>
-                    setFilter({ ...filter, operation_type: value === 'all' ? undefined : value as any })
+                    setFilter({ ...filter, operationType: value === 'all' ? undefined : value as any })
                   }
                 >
                   <SelectTrigger>
@@ -323,27 +321,27 @@ export function AuditLogsViewer() {
                 logs.map((log) => (
                   <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50">
                     <TableCell className="font-mono text-xs">
-                      {formatDistanceToNow(new Date(log.created_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                     </TableCell>
                     <TableCell>
-                      {getOperationBadge(log.operation_type)}
-                      {log.bulk_operation === 1 && (
+                      {getOperationBadge(log.operationType)}
+                      {log.bulkOperation === 1 && (
                         <Badge variant="outline" className="ml-2">
                           Bulk
                         </Badge>
                       )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate">
-                      {log.template_name}
-                      {log.template_slug && (
+                      {log.templateName}
+                      {log.templateSlug && (
                         <div className="text-xs text-muted-foreground truncate">
-                          {log.template_slug}
+                          {log.templateSlug}
                         </div>
                       )}
                     </TableCell>
-                    <TableCell>{getStatusBadge(log.operation_status)}</TableCell>
+                    <TableCell>{getStatusBadge(log.operationStatus)}</TableCell>
                     <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
-                      {log.user_identifier || '—'}
+                      {log.userIdentifier || '—'}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
@@ -398,6 +396,7 @@ export function AuditLogsViewer() {
           loadLogs();
         }}
       />
+      </div>
     </div>
   );
 }

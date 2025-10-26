@@ -67,9 +67,9 @@ function mapSettingsToType(settings: any): AuditSettings {
   return {
     id: settings.id,
     enabled: settings.enabled,
-    retention_days: settings.retentionDays,
-    user_identifier: settings.userIdentifier,
-    updated_at: settings.updatedAt.toISOString(),
+    retentionDays: settings.retentionDays,
+    userIdentifier: settings.userIdentifier,
+    updatedAt: settings.updatedAt.toISOString(),
   };
 }
 
@@ -80,14 +80,14 @@ export async function isEnabled(client: PrismaClient): Promise<boolean> {
 
 export async function updateSettings(
   client: PrismaClient,
-  updates: Partial<Omit<AuditSettings, 'id' | 'updated_at'>>
+  updates: Partial<Omit<AuditSettings, 'id' | 'updatedAt'>>
 ): Promise<AuditSettings> {
   const updated = await client.auditSettings.update({
     where: { id: 1 },
     data: {
       enabled: updates.enabled,
-      retentionDays: updates.retention_days,
-      userIdentifier: updates.user_identifier,
+      retentionDays: updates.retentionDays,
+      userIdentifier: updates.userIdentifier,
       updatedAt: new Date(),
     },
   });
@@ -111,17 +111,17 @@ export async function createAuditLog(
 
   const created = await client.auditLog.create({
     data: {
-      operationType: entry.operation_type,
-      operationStatus: entry.operation_status,
-      operationId: entry.operation_id || null,
-      templateSlug: entry.template_slug || null,
-      templateName: entry.template_name,
-      stateBefore: entry.state_before ? JSON.stringify(entry.state_before) : null,
-      stateAfter: entry.state_after ? JSON.stringify(entry.state_after) : null,
-      changesSummary: entry.changes_summary ? JSON.stringify(entry.changes_summary) : null,
-      userIdentifier: entry.user_identifier || null,
-      errorMessage: entry.error_message || null,
-      errorDetails: entry.error_details ? JSON.stringify(entry.error_details) : null,
+      operationType: entry.operationType,
+      operationStatus: entry.operationStatus,
+      operationId: entry.operationId || null,
+      templateSlug: entry.templateSlug || null,
+      templateName: entry.templateName,
+      stateBefore: entry.stateBefore ? JSON.stringify(entry.stateBefore) : null,
+      stateAfter: entry.stateAfter ? JSON.stringify(entry.stateAfter) : null,
+      changesSummary: entry.changesSummary ? JSON.stringify(entry.changesSummary) : null,
+      userIdentifier: entry.userIdentifier || null,
+      errorMessage: entry.errorMessage || null,
+      errorDetails: entry.errorDetails ? JSON.stringify(entry.errorDetails) : null,
       bulkOperation: 0,
       searchText,
     },
@@ -143,21 +143,21 @@ export async function createBulkAuditLog(
 
   const created = await client.auditLog.create({
     data: {
-      operationType: entry.operation_type,
-      operationStatus: entry.operation_status,
-      operationId: entry.operation_id || null,
+      operationType: entry.operationType,
+      operationStatus: entry.operationStatus,
+      operationId: entry.operationId || null,
       templateSlug: null,
-      templateName: entry.template_name,
-      stateBefore: entry.state_before ? JSON.stringify(entry.state_before) : null,
-      stateAfter: entry.state_after ? JSON.stringify(entry.state_after) : null,
-      changesSummary: entry.changes_summary ? JSON.stringify(entry.changes_summary) : null,
-      userIdentifier: entry.user_identifier || null,
-      errorMessage: entry.error_message || null,
-      errorDetails: entry.error_details ? JSON.stringify(entry.error_details) : null,
+      templateName: entry.templateName,
+      stateBefore: entry.stateBefore ? JSON.stringify(entry.stateBefore) : null,
+      stateAfter: entry.stateAfter ? JSON.stringify(entry.stateAfter) : null,
+      changesSummary: entry.changesSummary ? JSON.stringify(entry.changesSummary) : null,
+      userIdentifier: entry.userIdentifier || null,
+      errorMessage: entry.errorMessage || null,
+      errorDetails: entry.errorDetails ? JSON.stringify(entry.errorDetails) : null,
       bulkOperation: 1,
-      bulkTotalCount: entry.bulk_total_count,
-      bulkSuccessCount: entry.bulk_success_count,
-      bulkFailureCount: entry.bulk_failure_count,
+      bulkTotalCount: entry.bulkTotalCount,
+      bulkSuccessCount: entry.bulkSuccessCount,
+      bulkFailureCount: entry.bulkFailureCount,
       searchText,
     },
   });
@@ -172,23 +172,23 @@ export async function createBulkAuditLog(
 function mapAuditLogToType(log: any): AuditLog {
   return {
     id: log.id,
-    created_at: log.createdAt.toISOString(),
-    operation_type: log.operationType,
-    operation_status: log.operationStatus,
-    operation_id: log.operationId,
-    template_slug: log.templateSlug,
-    template_name: log.templateName,
-    state_before: log.stateBefore,
-    state_after: log.stateAfter,
-    changes_summary: log.changesSummary,
-    user_identifier: log.userIdentifier,
-    error_message: log.errorMessage,
-    error_details: log.errorDetails,
-    bulk_operation: log.bulkOperation,
-    bulk_total_count: log.bulkTotalCount,
-    bulk_success_count: log.bulkSuccessCount,
-    bulk_failure_count: log.bulkFailureCount,
-    search_text: log.searchText,
+    createdAt: log.createdAt.toISOString(),
+    operationType: log.operationType,
+    operationStatus: log.operationStatus,
+    operationId: log.operationId,
+    templateSlug: log.templateSlug,
+    templateName: log.templateName,
+    stateBefore: log.stateBefore,
+    stateAfter: log.stateAfter,
+    changesSummary: log.changesSummary,
+    userIdentifier: log.userIdentifier,
+    errorMessage: log.errorMessage,
+    errorDetails: log.errorDetails,
+    bulkOperation: log.bulkOperation,
+    bulkTotalCount: log.bulkTotalCount,
+    bulkSuccessCount: log.bulkSuccessCount,
+    bulkFailureCount: log.bulkFailureCount,
+    searchText: log.searchText,
   };
 }
 
@@ -198,30 +198,30 @@ export async function getAuditLogs(
 ): Promise<AuditLog[]> {
   const where: any = {};
 
-  if (filter?.operation_type) {
-    where.operationType = filter.operation_type;
+  if (filter?.operationType) {
+    where.operationType = filter.operationType;
   }
 
-  if (filter?.template_name) {
-    where.templateName = { contains: filter.template_name };
+  if (filter?.templateName) {
+    where.templateName = { contains: filter.templateName };
   }
 
   if (filter?.status) {
     where.operationStatus = filter.status;
   }
 
-  if (filter?.date_from || filter?.date_to) {
+  if (filter?.dateFrom || filter?.dateTo) {
     where.createdAt = {};
-    if (filter.date_from) {
-      where.createdAt.gte = new Date(filter.date_from);
+    if (filter.dateFrom) {
+      where.createdAt.gte = new Date(filter.dateFrom);
     }
-    if (filter.date_to) {
-      where.createdAt.lte = new Date(filter.date_to);
+    if (filter.dateTo) {
+      where.createdAt.lte = new Date(filter.dateTo);
     }
   }
 
-  const orderBy = filter?.order_by || 'createdAt';
-  const orderDir = filter?.order_dir || 'DESC';
+  const orderBy = filter?.orderBy || 'createdAt';
+  const orderDir = filter?.orderDir || 'DESC';
 
   const logs = await client.auditLog.findMany({
     where,
@@ -254,8 +254,8 @@ export async function searchAuditLogs(
     searchText: { contains: query.toLowerCase() },
   };
 
-  if (filter?.operation_type) {
-    where.operationType = filter.operation_type;
+  if (filter?.operationType) {
+    where.operationType = filter.operationType;
   }
 
   if (filter?.status) {
@@ -350,10 +350,10 @@ export async function getAuditStats(client: PrismaClient): Promise<AuditStats> {
   const storageSizeMb = (totalLogs * 3.5) / 1024; // Average 3.5 KB per log
 
   return {
-    total_logs: totalLogs,
-    by_operation: byOperationMap as any,
-    oldest_entry: oldest?.createdAt.toISOString() || null,
-    storage_size_mb: parseFloat(storageSizeMb.toFixed(2)),
+    totalLogs: totalLogs,
+    byOperation: byOperationMap as any,
+    oldestEntry: oldest?.createdAt.toISOString() || null,
+    storageSizeMb: parseFloat(storageSizeMb.toFixed(2)),
   };
 }
 
@@ -363,17 +363,17 @@ export async function getAuditStats(client: PrismaClient): Promise<AuditStats> {
 
 function buildSearchText(entry: AuditLogEntry | BulkAuditLogEntry): string {
   const parts: string[] = [
-    entry.template_name,
-    entry.operation_type,
-    entry.operation_status,
+    entry.templateName,
+    entry.operationType,
+    entry.operationStatus,
   ];
 
-  if (entry.template_slug) {
-    parts.push(entry.template_slug);
+  if (entry.templateSlug) {
+    parts.push(entry.templateSlug);
   }
 
-  if (entry.state_after) {
-    const state = entry.state_after as AuditTemplateState;
+  if (entry.stateAfter) {
+    const state = entry.stateAfter as AuditTemplateState;
     parts.push(...state.labels);
   }
 

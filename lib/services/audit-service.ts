@@ -36,12 +36,12 @@ export async function logTemplateCreate(
     if (!enabled) return;
 
     await createAuditLog(client, {
-      operation_type: 'create',
-      operation_status: 'success',
-      template_slug: template.slug,
-      template_name: template.name,
-      state_after: templateToAuditState(template),
-      user_identifier: userContext,
+      operationType: 'create',
+      operationStatus: 'success',
+      templateSlug: template.slug,
+      templateName: template.name,
+      stateAfter: templateToAuditState(template),
+      userIdentifier: userContext,
     });
   } catch (error) {
     console.error('Failed to log template creation:', error);
@@ -67,14 +67,14 @@ export async function logTemplateUpdate(
     const changes = generateChangesSummary(beforeState, afterState);
 
     await createAuditLog(client, {
-      operation_type: 'update',
-      operation_status: 'success',
-      template_slug: after.slug,
-      template_name: after.name,
-      state_before: beforeState,
-      state_after: afterState,
-      changes_summary: changes,
-      user_identifier: userContext,
+      operationType: 'update',
+      operationStatus: 'success',
+      templateSlug: after.slug,
+      templateName: after.name,
+      stateBefore: beforeState,
+      stateAfter: afterState,
+      changesSummary: changes,
+      userIdentifier: userContext,
     });
   } catch (error) {
     console.error('Failed to log template update:', error);
@@ -94,12 +94,12 @@ export async function logTemplateDelete(
     if (!enabled) return;
 
     await createAuditLog(client, {
-      operation_type: 'delete',
-      operation_status: 'success',
-      template_slug: template.slug,
-      template_name: template.name,
-      state_before: templateToAuditState(template),
-      user_identifier: userContext,
+      operationType: 'delete',
+      operationStatus: 'success',
+      templateSlug: template.slug,
+      templateName: template.name,
+      stateBefore: templateToAuditState(template),
+      userIdentifier: userContext,
     });
   } catch (error) {
     console.error('Failed to log template deletion:', error);
@@ -122,17 +122,17 @@ export async function logBulkImport(
     const status = result.failed === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failure';
 
     await createBulkAuditLog(client, {
-      operation_type: 'import',
-      operation_status: status,
-      operation_id: operationId,
-      template_name: `Bulk Import (${result.total} templates)`,
-      bulk_operation: true,
-      bulk_total_count: result.total,
-      bulk_success_count: result.imported,
-      bulk_failure_count: result.failed,
-      error_message: result.errors.length > 0 ? `${result.errors.length} errors` : undefined,
-      error_details: result.errors.length > 0 ? result.errors : undefined,
-      user_identifier: userContext,
+      operationType: 'import',
+      operationStatus: status,
+      operationId: operationId,
+      templateName: `Bulk Import (${result.total} templates)`,
+      bulkOperation: true,
+      bulkTotalCount: result.total,
+      bulkSuccessCount: result.imported,
+      bulkFailureCount: result.failed,
+      errorMessage: result.errors.length > 0 ? `${result.errors.length} errors` : undefined,
+      errorDetails: result.errors.length > 0 ? result.errors : undefined,
+      userIdentifier: userContext,
     });
   } catch (error) {
     console.error('Failed to log bulk import:', error);
@@ -153,13 +153,13 @@ export async function logRestore(
     if (!enabled) return;
 
     await createAuditLog(client, {
-      operation_type: 'restore',
-      operation_status: 'success',
-      operation_id: `restore-from-${auditLog.id}`,
-      template_slug: restoredTemplate.slug,
-      template_name: restoredTemplate.name,
-      state_after: templateToAuditState(restoredTemplate),
-      user_identifier: userContext,
+      operationType: 'restore',
+      operationStatus: 'success',
+      operationId: `restore-from-${auditLog.id}`,
+      templateSlug: restoredTemplate.slug,
+      templateName: restoredTemplate.name,
+      stateAfter: templateToAuditState(restoredTemplate),
+      userIdentifier: userContext,
     });
   } catch (error) {
     console.error('Failed to log restore operation:', error);
@@ -189,11 +189,11 @@ export async function prepareRestore(
       };
     }
 
-    // For delete operations, restore from state_before
-    // For update operations, restore from state_before
-    const stateToRestore = auditLog.operation_type === 'delete'
-      ? auditLog.state_before
-      : auditLog.state_before;
+    // For delete operations, restore from stateBefore
+    // For update operations, restore from stateBefore
+    const stateToRestore = auditLog.operationType === 'delete'
+      ? auditLog.stateBefore
+      : auditLog.stateBefore;
 
     if (!stateToRestore) {
       return {
