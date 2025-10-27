@@ -359,13 +359,22 @@ cd reddrill
 # Install dependencies
 npm install
 
-# Configure Mandrill API key in UI (Settings page)
+# Configure environment (optional - copy .env.example)
+cp .env.example .env
+
+# Initialize local D1 database for audit trail (optional)
+npm run db:migrate:local
 
 # Start dev server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) 🎉
+
+**Configuration:**
+1. Go to Settings page
+2. Configure Mandrill API key (required for template management)
+3. (Optional) Enable Audit Trail and configure translation providers
 
 **Note:** Cloudflare Workers AI translation only works when deployed to Cloudflare Workers, not in local development. Use Google, Azure, or Crowdin for local testing.
 
@@ -382,7 +391,7 @@ npm run build:full
 # Preview locally with Cloudflare environment
 npm run preview
 
-# Deploy to production
+# Deploy to production (includes automatic D1 migration)
 npm run deploy
 ```
 
@@ -401,20 +410,117 @@ npm run deploy
 
    [ai]
    binding = "AI"  # Enables Cloudflare Workers AI
+
+   [[d1_databases]]
+   binding = "DB"
+   database_name = "reddrill-audit"
+   database_id = "your-d1-database-id"  # Get from step 3
    ```
 
-3. **Deploy:**
+3. **Create D1 Database:**
+   ```bash
+   # Create the D1 database
+   npm run db:create
+
+   # This will output: database_id = "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+   # Copy this ID and update wrangler.toml
+   ```
+
+4. **Run Migrations:**
+   ```bash
+   # Apply migrations to remote D1 database
+   npm run db:migrate:remote
+   ```
+
+5. **Deploy:**
    ```bash
    npm run deploy
    ```
 
-4. **Configure API Keys:**
+6. **Configure API Keys:**
    - Open your deployed app URL
    - Go to Settings
    - Enter Mandrill API key
+   - (Optional) Enable Audit Trail
    - (Optional) Configure translation providers
 
+### Available D1 Commands
+
+```bash
+# Database Management
+npm run db:create              # Create new D1 database
+npm run db:list                # List all D1 databases
+
+# Migrations
+npm run db:migrate:local       # Apply migrations to local database
+npm run db:migrate:remote      # Apply migrations to remote D1 database
+npm run db:migrations:create   # Create new migration file
+
+# Query Database
+npm run db:query:local "SELECT * FROM audit_logs LIMIT 10"
+npm run db:query:remote "SELECT * FROM audit_logs LIMIT 10"
+```
+
 See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+---
+
+## 🔍 Audit Trail Activation
+
+The Audit Trail system tracks all template operations (create, update, delete) with before/after state capture.
+
+### Prerequisites
+
+1. **D1 Database Setup** (Required)
+   - For local development: `npm run db:migrate:local`
+   - For production: Create D1 database and run `npm run db:migrate:remote` (see Deployment section)
+
+2. **Enable in Settings** (Required)
+   - Open your app → Go to Settings → Audit Trail tab
+   - Toggle "Enable Audit Trail" to ON
+   - Configure retention period (default: 30 days)
+   - Optionally set user identifier for tracking
+
+### Features
+
+✅ **Automatic Tracking** - All template operations logged automatically when enabled
+✅ **Before/After Snapshots** - Full template state captured for every change
+✅ **Field-Level Changes** - See exactly what changed (name, content, labels, etc.)
+✅ **Search & Filter** - Find logs by operation type, template name, status, date range
+✅ **Restore from History** - Restore any previous version from audit log
+✅ **Bulk Operations** - Track batch operations with success/failure counts
+✅ **Configurable Retention** - Auto-cleanup old logs based on your policy
+
+### Viewing Audit Logs
+
+1. Navigate to the **Audit** page from the sidebar
+2. Browse all operations in chronological order
+3. Use filters to narrow down:
+   - Operation Type (create, update, delete, restore, import)
+   - Status (success, partial, failure)
+   - Date range
+4. Click "Details" on any log to see:
+   - **Changes**: Field-by-field comparison
+   - **Before**: Complete state before operation
+   - **After**: Complete state after operation
+   - **Raw JSON**: Full audit log data
+
+### Restoring from Audit Log
+
+1. Open audit log details for deleted template
+2. Click "Restore Template" button
+3. Template will be recreated with its original state
+4. Restoration is also logged in audit trail
+
+### Disabling Audit Trail
+
+To disable audit logging:
+1. Go to Settings → Audit Trail
+2. Toggle "Enable Audit Trail" to OFF
+3. Existing logs are preserved
+4. No new logs will be created until re-enabled
+
+**Note:** Audit trail data is stored in D1 database (SQLite). Each log entry includes full template state, so storage grows with usage. Configure retention period to balance history vs. storage.
 
 ---
 

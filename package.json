@@ -8,10 +8,17 @@
     "build:worker": "opennextjs-cloudflare build --skipBuild",
     "build:full": "npm run build && npm run build:worker",
     "preview": "wrangler dev",
-    "deploy": "npm run build:full && wrangler deploy",
-    "deploy:production": "npm run build:full && wrangler deploy --env production",
+    "deploy": "npm run build:full && npm run db:migrate:remote && wrangler deploy",
+    "deploy:production": "npm run build:full && npm run db:migrate:remote && wrangler deploy --env production",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:create": "wrangler d1 create reddrill-audit",
+    "db:migrate:local": "wrangler d1 migrations apply reddrill-audit --local",
+    "db:migrate:remote": "wrangler d1 migrations apply reddrill-audit --remote",
+    "db:migrations:create": "wrangler d1 migrations create reddrill-audit",
+    "db:list": "wrangler d1 list",
+    "db:query:local": "wrangler d1 execute reddrill-audit --local --command",
+    "db:query:remote": "wrangler d1 execute reddrill-audit --remote --command"
   },
   "dependencies": {
     "@cloudflare/ai": "^1.2.2",
