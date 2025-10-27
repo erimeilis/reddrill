@@ -27,4 +27,5 @@ remote = true
 [[d1_databases]]
 binding = "DB"
 database_name = "reddrill-audit"
-database_id = "preview-id-replace-after-creation"
+database_id = "20330354-d122-4545-a309-11e6492c99d4"
+migrations_dir = "prisma/migrations"
