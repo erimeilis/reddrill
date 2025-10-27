@@ -51,7 +51,7 @@
 - **Detailed Modal View** - Inspect audit logs with tabbed views (Changes, Before, After, Raw JSON)
 - **User Identification** - Track which user performed each operation
 - **Operation Status** - Success, partial, or failure status for each operation
-- **SQLite Storage** - Persistent audit logs with Prisma ORM
+- **Cloudflare D1 Storage** - Persistent audit logs with Drizzle ORM
 - **Configurable Retention** - Auto-cleanup based on retention policies
 - **Export Capability** - Export audit logs for compliance and reporting
 
@@ -73,6 +73,10 @@
 - ⚡ Loading states & skeletons
 - 🎯 Parallel routes for simultaneous views
 - 🎨 Custom teal scrollbars throughout
+- ✨ **No browser alerts** - Beautiful inline notifications and confirmations
+- 🎭 Elegant error handling with dismissible alerts
+- ⏱️ Auto-dismissing success messages (3 seconds)
+- 🔒 Type-to-confirm for destructive actions
 
 ---
 
@@ -330,7 +334,7 @@ All providers support:
 
 **Translation:** Cloudflare Workers AI • Google Cloud Translation • Azure Translator • Crowdin
 
-**Database:** Prisma ORM • SQLite (audit logs) • IndexedDB (settings, cache, test scenarios)
+**Database:** Drizzle ORM • Cloudflare D1 (audit logs) • IndexedDB (settings, cache, test scenarios)
 
 **Performance:** React Compiler • Cache Components • Turbopack File System Caching
 
@@ -582,7 +586,9 @@ reddrill/
 │   ├── api/
 │   │   └── mandrill.ts           # Mandrill API client
 │   ├── db/
-│   │   ├── audit-db.ts           # Prisma/SQLite audit operations
+│   │   ├── client.ts             # Drizzle D1 database client
+│   │   ├── schema.ts             # Drizzle database schema
+│   │   ├── audit-db.ts           # Drizzle/D1 audit operations
 │   │   ├── translation-settings-db.ts  # IndexedDB for settings
 │   │   └── test-scenarios-db.ts        # IndexedDB for test scenarios
 │   ├── hooks/                    # Custom React hooks
@@ -598,10 +604,9 @@ reddrill/
 │       ├── template-tree.ts      # Build tree from templates
 │       └── template-diff.ts      # Calculate template diffs
 │
-├── prisma/
-│   ├── schema.prisma             # Prisma schema for audit logs
-│   ├── migrations/               # Database migrations
-│   └── dev.db                    # SQLite database (development)
+├── drizzle/
+│   ├── meta/                     # Drizzle migration metadata
+│   └── *.sql                     # Database migration files
 │
 ├── types/                        # TypeScript type definitions
 ├── wrangler.toml                 # Cloudflare Workers config
@@ -694,7 +699,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ### State & Data
 - [Zustand](https://zustand-demo.pmnd.rs/) - Lightweight state management
 - [idb](https://github.com/jakearchibald/idb) - IndexedDB wrapper
-- [Prisma](https://www.prisma.io/) - Next-generation ORM for Node.js and TypeScript
+- [Drizzle ORM](https://orm.drizzle.team/) - TypeScript ORM for SQL databases
 
 ---
 

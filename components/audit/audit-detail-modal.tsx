@@ -25,6 +25,7 @@ import {
 } from '@tabler/icons-react';
 import type { AuditLog, AuditTemplateState, AuditChange } from '@/lib/types/audit';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuditApi } from '@/lib/hooks/useAuditApi';
 
 interface AuditDetailModalProps {
   logId: number | null;
@@ -39,6 +40,7 @@ export function AuditDetailModal({
   onOpenChange,
   onRestoreSuccess,
 }: AuditDetailModalProps) {
+  const { auditFetch, hasApiKey } = useAuditApi();
   const [log, setLog] = useState<AuditLog | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function AuditDetailModal({
     setError(null);
 
     try {
-      const response = await fetch(`/api/audit/logs/${logId}`);
+      const response = await auditFetch(`/api/audit/logs/${logId}`);
       if (!response.ok) {
         throw new Error('Failed to load log details');
       }

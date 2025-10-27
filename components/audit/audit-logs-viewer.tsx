@@ -15,8 +15,10 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditLog, AuditLogFilter } from '@/lib/types/audit';
 import { formatDistanceToNow } from 'date-fns';
 import { AuditDetailModal } from './audit-detail-modal';
+import { useAuditApi } from '@/lib/hooks/useAuditApi';
 
 export function AuditLogsViewer() {
+  const { auditFetch, hasApiKey } = useAuditApi();
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -52,7 +54,7 @@ export function AuditLogsViewer() {
       if (filter.orderBy) params.set('order_by', filter.orderBy);
       if (filter.orderDir) params.set('order_dir', filter.orderDir);
 
-      const response = await fetch(`/api/audit/logs?${params.toString()}`);
+      const response = await auditFetch(`/api/audit/logs?${params.toString()}`);
       if (!response.ok) {
         throw new Error('Failed to load logs');
       }
@@ -78,7 +80,7 @@ export function AuditLogsViewer() {
     setError(null);
 
     try {
-      const response = await fetch('/api/audit/logs/search', {
+      const response = await auditFetch('/api/audit/logs/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

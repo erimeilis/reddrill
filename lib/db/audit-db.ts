@@ -1,6 +1,7 @@
 /**
  * Audit Database Layer using Drizzle ORM
  * Handles all database operations for audit trail system
+ * Includes API key isolation for multi-tenancy
  */
 
 import { eq, and, desc, asc, like, lt, gte, lte, count, sql } from 'drizzle-orm';
@@ -17,20 +18,43 @@ import type {
 } from '../types/audit';
 
 /**
+ * Hash API key for secure storage
+ * Uses SHA-256 for consistent, secure hashing
+ */
+export async function hashApiKey(apiKey: string): Promise<string> {
+  if (typeof crypto === 'undefined' || !crypto.subtle) {
+    // Fallback for environments without Web Crypto API
+    // This should not happen in Cloudflare Workers or modern browsers
+    throw new Error('Web Crypto API not available');
+  }
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(apiKey);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+/**
  * Settings Operations
  */
 
-export async function getSettings(db: Database): Promise<AuditSettings | null> {
-  const settings = await db.select().from(auditSettings).where(eq(auditSettings.id, 1)).get();
+export async function getSettings(db: Database, apiKeyHash: string): Promise<AuditSettings | null> {
+  const settings = await db
+    .select()
+    .from(auditSettings)
+    .where(eq(auditSettings.apiKeyHash, apiKeyHash))
+    .get();
 
   if (!settings) {
-    // Create default settings if not exists
+    // Create default settings for this API key if not exists
     const [created] = await db
       .insert(auditSettings)
       .values({
-        id: 1,
         enabled: 0,
         retentionDays: 30,
+        apiKeyHash,
       })
       .returning();
     return mapSettingsToType(created);
@@ -53,13 +77,14 @@ function mapSettingsToType(settings: any): AuditSettings {
   };
 }
 
-export async function isEnabled(db: Database): Promise<boolean> {
-  const settings = await getSettings(db);
+export async function isEnabled(db: Database, apiKeyHash: string): Promise<boolean> {
+  const settings = await getSettings(db, apiKeyHash);
   return settings ? settings.enabled === 1 : false;
 }
 
 export async function updateSettings(
   db: Database,
+  apiKeyHash: string,
   updates: Partial<Omit<AuditSettings, 'id' | 'updatedAt'>>
 ): Promise<AuditSettings> {
   const updateData: any = {
@@ -76,10 +101,32 @@ export async function updateSettings(
     updateData.userIdentifier = updates.userIdentifier;
   }
 
+  // Check if settings exist
+  const existing = await db
+    .select()
+    .from(auditSettings)
+    .where(eq(auditSettings.apiKeyHash, apiKeyHash))
+    .get();
+
+  if (!existing) {
+    // Create new settings for this API key
+    const [created] = await db
+      .insert(auditSettings)
+      .values({
+        enabled: updates.enabled || 0,
+        retentionDays: updates.retentionDays || 30,
+        userIdentifier: updates.userIdentifier || null,
+        apiKeyHash,
+      })
+      .returning();
+    return mapSettingsToType(created);
+  }
+
+  // Update existing settings
   const [updated] = await db
     .update(auditSettings)
     .set(updateData)
-    .where(eq(auditSettings.id, 1))
+    .where(eq(auditSettings.apiKeyHash, apiKeyHash))
     .returning();
 
   return mapSettingsToType(updated);
@@ -89,8 +136,12 @@ export async function updateSettings(
  * Audit Log Operations
  */
 
-export async function createAuditLog(db: Database, entry: AuditLogEntry): Promise<number> {
-  const enabled = await isEnabled(db);
+export async function createAuditLog(
+  db: Database,
+  apiKeyHash: string,
+  entry: AuditLogEntry
+): Promise<number> {
+  const enabled = await isEnabled(db, apiKeyHash);
   if (!enabled) {
     return -1; // Audit disabled
   }
@@ -113,14 +164,19 @@ export async function createAuditLog(db: Database, entry: AuditLogEntry): Promis
       errorDetails: entry.errorDetails ? JSON.stringify(entry.errorDetails) : null,
       bulkOperation: 0,
       searchText,
+      apiKeyHash,
     })
     .returning();
 
   return created.id;
 }
 
-export async function createBulkAuditLog(db: Database, entry: BulkAuditLogEntry): Promise<number> {
-  const enabled = await isEnabled(db);
+export async function createBulkAuditLog(
+  db: Database,
+  apiKeyHash: string,
+  entry: BulkAuditLogEntry
+): Promise<number> {
+  const enabled = await isEnabled(db, apiKeyHash);
   if (!enabled) {
     return -1;
   }
@@ -146,6 +202,7 @@ export async function createBulkAuditLog(db: Database, entry: BulkAuditLogEntry)
       bulkSuccessCount: entry.bulkSuccessCount,
       bulkFailureCount: entry.bulkFailureCount,
       searchText,
+      apiKeyHash,
     })
     .returning();
 
@@ -179,8 +236,12 @@ function mapAuditLogToType(log: any): AuditLog {
   };
 }
 
-export async function getAuditLogs(db: Database, filter?: AuditLogFilter): Promise<AuditLog[]> {
-  const conditions: any[] = [];
+export async function getAuditLogs(
+  db: Database,
+  apiKeyHash: string,
+  filter?: AuditLogFilter
+): Promise<AuditLog[]> {
+  const conditions: any[] = [eq(auditLogs.apiKeyHash, apiKeyHash)];
 
   if (filter?.operationType) {
     conditions.push(eq(auditLogs.operationType, filter.operationType));
@@ -210,7 +271,7 @@ export async function getAuditLogs(db: Database, filter?: AuditLogFilter): Promi
 
   const baseQuery = db.select().from(auditLogs);
 
-  const whereQuery = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
+  const whereQuery = baseQuery.where(and(...conditions));
 
   const orderedQuery = whereQuery.orderBy(orderByFn(auditLogs.createdAt));
 
@@ -218,17 +279,29 @@ export async function getAuditLogs(db: Database, filter?: AuditLogFilter): Promi
   return logs.map(mapAuditLogToType);
 }
 
-export async function getAuditLogById(db: Database, id: number): Promise<AuditLog | null> {
-  const log = await db.select().from(auditLogs).where(eq(auditLogs.id, id)).get();
+export async function getAuditLogById(
+  db: Database,
+  apiKeyHash: string,
+  id: number
+): Promise<AuditLog | null> {
+  const log = await db
+    .select()
+    .from(auditLogs)
+    .where(and(eq(auditLogs.id, id), eq(auditLogs.apiKeyHash, apiKeyHash)))
+    .get();
   return log ? mapAuditLogToType(log) : null;
 }
 
 export async function searchAuditLogs(
   db: Database,
+  apiKeyHash: string,
   query: string,
   filter?: AuditLogFilter
 ): Promise<AuditLog[]> {
-  const conditions: any[] = [like(auditLogs.searchText, `%${query.toLowerCase()}%`)];
+  const conditions: any[] = [
+    eq(auditLogs.apiKeyHash, apiKeyHash),
+    like(auditLogs.searchText, `%${query.toLowerCase()}%`)
+  ];
 
   if (filter?.operationType) {
     conditions.push(eq(auditLogs.operationType, filter.operationType));
@@ -250,11 +323,15 @@ export async function searchAuditLogs(
   return logs.map(mapAuditLogToType);
 }
 
-export async function getAuditLogsByTemplate(db: Database, templateName: string): Promise<AuditLog[]> {
+export async function getAuditLogsByTemplate(
+  db: Database,
+  apiKeyHash: string,
+  templateName: string
+): Promise<AuditLog[]> {
   const logs = await db
     .select()
     .from(auditLogs)
-    .where(eq(auditLogs.templateName, templateName))
+    .where(and(eq(auditLogs.templateName, templateName), eq(auditLogs.apiKeyHash, apiKeyHash)))
     .orderBy(desc(auditLogs.createdAt))
     .all();
 
@@ -265,28 +342,39 @@ export async function getAuditLogsByTemplate(db: Database, templateName: string)
  * Retention and Cleanup
  */
 
-export async function cleanupOldLogs(db: Database, retentionDays: number): Promise<number> {
+export async function cleanupOldLogs(
+  db: Database,
+  apiKeyHash: string,
+  retentionDays: number
+): Promise<number> {
   if (retentionDays === -1) {
     return 0; // Forever retention
   }
 
   const cutoffDate = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
 
-  const result = await db.delete(auditLogs).where(lt(auditLogs.createdAt, cutoffDate)).returning();
+  const result = await db
+    .delete(auditLogs)
+    .where(and(lt(auditLogs.createdAt, cutoffDate), eq(auditLogs.apiKeyHash, apiKeyHash)))
+    .returning();
 
   return result.length;
 }
 
-export async function clearAllLogs(db: Database): Promise<void> {
-  await db.delete(auditLogs);
+export async function clearAllLogs(db: Database, apiKeyHash: string): Promise<void> {
+  await db.delete(auditLogs).where(eq(auditLogs.apiKeyHash, apiKeyHash));
 }
 
 /**
  * Statistics
  */
 
-export async function getAuditStats(db: Database): Promise<AuditStats> {
-  const totalLogsResult = await db.select({ count: count() }).from(auditLogs).get();
+export async function getAuditStats(db: Database, apiKeyHash: string): Promise<AuditStats> {
+  const totalLogsResult = await db
+    .select({ count: count() })
+    .from(auditLogs)
+    .where(eq(auditLogs.apiKeyHash, apiKeyHash))
+    .get();
   const totalLogs = totalLogsResult?.count || 0;
 
   const byOperation = await db
@@ -295,12 +383,14 @@ export async function getAuditStats(db: Database): Promise<AuditStats> {
       count: count(),
     })
     .from(auditLogs)
+    .where(eq(auditLogs.apiKeyHash, apiKeyHash))
     .groupBy(auditLogs.operationType)
     .all();
 
   const oldest = await db
     .select({ createdAt: auditLogs.createdAt })
     .from(auditLogs)
+    .where(eq(auditLogs.apiKeyHash, apiKeyHash))
     .orderBy(asc(auditLogs.createdAt))
     .limit(1)
     .get();

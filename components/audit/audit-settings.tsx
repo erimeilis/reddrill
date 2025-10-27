@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { IconCheck, IconAlertCircle, IconTrash, IconRefresh, IconAlertTriangle, IconX, IconInfinity } from '@tabler/icons-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditSettings } from '@/lib/types/audit';
+import { useAuditApi } from '@/lib/hooks/useAuditApi';
 
 export function AuditSettingsComponent() {
   const router = useRouter();
+  const { auditFetch, hasApiKey } = useAuditApi();
   const [settings, setSettings] = useState<AuditSettings | null>(null);
   const [enabled, setEnabled] = useState<boolean>(false);
   const [retentionDays, setRetentionDays] = useState<number>(30);
@@ -32,7 +34,7 @@ export function AuditSettingsComponent() {
   const loadSettings = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/audit/settings');
+      const response = await auditFetch('/api/audit/settings');
       if (!response.ok) {
         throw new Error('Failed to load settings');
       }
@@ -60,7 +62,7 @@ export function AuditSettingsComponent() {
         user_identifier: userIdentifier || null,
       };
 
-      const response = await fetch('/api/audit/settings', {
+      const response = await auditFetch('/api/audit/settings', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -76,6 +78,9 @@ export function AuditSettingsComponent() {
       const result = await response.json();
       setSettings(result.settings);
       setMessage({ type: 'success', text: 'Settings saved successfully' });
+
+      // Notify navbar to update audit menu visibility
+      window.dispatchEvent(new Event('auditSettingsChanged'));
 
       // Refresh the router to update navbar and other components (Next.js 16)
       router.refresh();
@@ -95,7 +100,7 @@ export function AuditSettingsComponent() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/audit/cleanup', {
+      const response = await auditFetch('/api/audit/cleanup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -132,7 +137,7 @@ export function AuditSettingsComponent() {
     setMessage(null);
 
     try {
-      const response = await fetch('/api/audit/cleanup', {
+      const response = await auditFetch('/api/audit/cleanup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

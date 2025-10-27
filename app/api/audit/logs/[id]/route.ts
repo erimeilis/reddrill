@@ -1,18 +1,20 @@
 /**
  * Single Audit Log API
- * Retrieve specific audit log entry by ID
+ * Retrieve specific audit log entry by ID (filtered by API key)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/client';
 import { getAuditLogById } from '@/lib/db/audit-db';
+import { getApiKeyHash } from '@/lib/api/audit-middleware';
 
 /**
  * GET /api/audit/logs/:id
- * Get specific audit log by ID
+ * Get specific audit log by ID (for authenticated API key only)
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const { id } = await params;
     const logId = parseInt(id, 10);
 
@@ -21,7 +23,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const db = await getDb();
-    const log = await getAuditLogById(db, logId);
+    const log = await getAuditLogById(db, apiKeyHash, logId);
 
     if (!log) {
       return NextResponse.json({ error: 'Audit log not found' }, { status: 404 });
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     console.error('Error fetching audit log:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch log' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }

@@ -1,24 +1,26 @@
 /**
  * Audit Cleanup API
- * Manage audit log retention and cleanup
+ * Manage audit log retention and cleanup (per API key)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/client';
 import { cleanupOldLogs, clearAllLogs, getSettings } from '@/lib/db/audit-db';
+import { getApiKeyHash } from '@/lib/api/audit-middleware';
 
 /**
  * POST /api/audit/cleanup
- * Cleanup old audit logs based on retention policy
+ * Cleanup old audit logs based on retention policy (for authenticated API key only)
  */
 export async function POST(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
     const body = await request.json().catch(() => ({}));
 
     // Check for explicit "clear all" request
     if (body.clear_all === true) {
-      await clearAllLogs(db);
+      await clearAllLogs(db, apiKeyHash);
       return NextResponse.json({
         success: true,
         message: 'All audit logs cleared',
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Otherwise, cleanup based on retention policy
-    const settings = await getSettings(db);
+    const settings = await getSettings(db, apiKeyHash);
 
     if (!settings) {
       return NextResponse.json({ error: 'Settings not found' }, { status: 404 });
@@ -43,7 +45,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const deletedCount = await cleanupOldLogs(db, retentionDays);
+    const deletedCount = await cleanupOldLogs(db, apiKeyHash, retentionDays);
 
     return NextResponse.json({
       success: true,
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
     console.error('Error during cleanup:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Cleanup failed' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }

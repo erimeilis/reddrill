@@ -8,27 +8,33 @@ import * as schema from './schema';
 
 /**
  * Get Drizzle database instance with D1 binding
- * IMPORTANT: Only works in Cloudflare Workers environment (production/preview)
- * In local dev, audit system is disabled
+ * Works in:
+ * - Production/Preview (Cloudflare Workers)
+ * - Local development with wrangler pages dev
  */
 export async function getDb() {
-  // Only try Cloudflare context in production
-  if (process.env.NODE_ENV !== 'development') {
-    try {
-      // Dynamic import at runtime to avoid Turbopack issues
-      const cloudflare = await import('@opennextjs/cloudflare');
-      const { env} = await cloudflare.getCloudflareContext();
+  try {
+    // Dynamic import at runtime to avoid Turbopack issues
+    const cloudflare = await import('@opennextjs/cloudflare');
+    const { env} = await cloudflare.getCloudflareContext();
 
-      if ((env as any).DB) {
-        return drizzle((env as any).DB, { schema });
-      }
-    } catch (error) {
-      console.warn('Cloudflare context unavailable:', error);
+    if ((env as any).DB) {
+      return drizzle((env as any).DB, { schema });
     }
-  }
 
-  // Development mode or Cloudflare context failed
-  throw new Error('D1 not available - audit disabled in development');
+    throw new Error('DB binding not found in Cloudflare context');
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Audit] D1 not available in Next.js dev mode:', errorMessage);
+      console.warn('[Audit] To enable audit in local dev, use: wrangler pages dev');
+    } else {
+      console.error('[Audit] Failed to access D1 database:', errorMessage);
+    }
+
+    throw new Error('D1 database unavailable');
+  }
 }
 
 /**

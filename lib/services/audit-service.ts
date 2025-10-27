@@ -14,14 +14,15 @@ import { templateToAuditState, generateChangesSummary, buildSearchText } from '.
  */
 export async function logTemplateCreate(
   db: Database,
+  apiKeyHash: string,
   template: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
     if (!enabled) return;
 
-    await createAuditLog(db, {
+    await createAuditLog(db, apiKeyHash, {
       operationType: 'create',
       operationStatus: 'success',
       templateSlug: template.slug,
@@ -40,19 +41,20 @@ export async function logTemplateCreate(
  */
 export async function logTemplateUpdate(
   db: Database,
+  apiKeyHash: string,
   before: MandrillTemplate,
   after: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
     if (!enabled) return;
 
     const beforeState = templateToAuditState(before);
     const afterState = templateToAuditState(after);
     const changes = generateChangesSummary(beforeState, afterState);
 
-    await createAuditLog(db, {
+    await createAuditLog(db, apiKeyHash, {
       operationType: 'update',
       operationStatus: 'success',
       templateSlug: after.slug,
@@ -72,14 +74,15 @@ export async function logTemplateUpdate(
  */
 export async function logTemplateDelete(
   db: Database,
+  apiKeyHash: string,
   template: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
     if (!enabled) return;
 
-    await createAuditLog(db, {
+    await createAuditLog(db, apiKeyHash, {
       operationType: 'delete',
       operationStatus: 'success',
       templateSlug: template.slug,
@@ -97,17 +100,18 @@ export async function logTemplateDelete(
  */
 export async function logBulkImport(
   db: Database,
+  apiKeyHash: string,
   result: ImportResult,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
     if (!enabled) return;
 
     const operationId = `import-${Date.now()}`;
     const status = result.failed === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failure';
 
-    await createBulkAuditLog(db, {
+    await createBulkAuditLog(db, apiKeyHash, {
       operationType: 'import',
       operationStatus: status,
       operationId: operationId,
@@ -130,15 +134,16 @@ export async function logBulkImport(
  */
 export async function logRestore(
   db: Database,
+  apiKeyHash: string,
   auditLog: AuditLog,
   restoredTemplate: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
     if (!enabled) return;
 
-    await createAuditLog(db, {
+    await createAuditLog(db, apiKeyHash, {
       operationType: 'restore',
       operationStatus: 'success',
       operationId: `restore-from-${auditLog.id}`,
@@ -158,6 +163,7 @@ export async function logRestore(
  */
 export async function prepareRestore(
   db: Database,
+  apiKeyHash: string,
   logId: number,
   options?: RestoreOptions
 ): Promise<{
@@ -166,7 +172,7 @@ export async function prepareRestore(
   error?: string;
 }> {
   try {
-    const auditLog = await getAuditLogById(db, logId);
+    const auditLog = await getAuditLogById(db, apiKeyHash, logId);
 
     if (!auditLog) {
       return {

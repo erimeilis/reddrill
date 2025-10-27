@@ -2,42 +2,49 @@
 
 ## Overview
 
-The audit trail system tracks all template operations (create, update, delete, import) with full state snapshots for disaster recovery.
+The audit trail system tracks all template operations (create, update, delete, import) with full state snapshots for disaster recovery. Built with **Drizzle ORM** and **Cloudflare D1** for edge-optimized performance.
 
 ## Database Setup
 
 ### Local Development
 
-```bash
-# Apply migrations to local SQLite database
-npx prisma migrate dev
+The application supports local D1 development using Wrangler:
 
-# Or push schema directly (development only)
-npx prisma db push
+```bash
+# Create local D1 database
+npx wrangler d1 create reddrill-audit
+
+# Update wrangler.toml with the database ID from the output
+
+# Generate migrations from schema
+npx drizzle-kit generate
+
+# Apply migrations locally
+npx wrangler d1 migrations apply reddrill-audit --local
 ```
 
 ### Production (Cloudflare D1)
 
 ```bash
-# Create D1 database
-wrangler d1 create reddrill-audit
+# Apply migrations to production D1
+npx wrangler d1 migrations apply reddrill-audit --remote
 
-# Update wrangler.toml with the database ID from the output
-
-# Apply migrations to D1
-wrangler d1 migrations apply reddrill-audit --local # Test locally first
-wrangler d1 migrations apply reddrill-audit # Apply to production
+# Or use the deploy script which includes migration
+npm run deploy
 ```
+
+**Note**: D1 is only available when running via `wrangler pages dev` or in production. Standard `npm run dev` (Next.js dev server) will show audit as disabled.
 
 ## Configuration
 
 ### 1. Enable Audit Trail
 
-Access the Settings dialog in the application:
-- Navigate to Settings → Audit Trail tab
+Access the Audit Settings page in the application:
+- Navigate to `/audit` page
 - Toggle "Audit Trail Status" to Enabled
 - Configure retention period (default: 30 days)
 - Optionally set a user identifier
+- Beautiful inline UI with no browser alerts!
 
 ### 2. Retention Policy
 
@@ -111,18 +118,18 @@ POST /api/audit/cleanup
 
 ## Integration with Mandrill Client
 
-To enable audit logging for template operations, use the audited client wrapper:
+Audit logging is automatically integrated via the audited client wrapper:
 
 ```typescript
-import { getPrismaClient } from '@/lib/db/audit-db';
+import { getDb } from '@/lib/db/client';
 import { createAuditedClient } from '@/lib/api/mandrill-audited';
 import mandrillClient from '@/lib/api/mandrill';
 
-// Create audited wrapper
-const prisma = getPrismaClient();
+// Create audited wrapper with Drizzle
+const db = await getDb();
 const auditedClient = createAuditedClient(
   mandrillClient,
-  prisma,
+  db,
   'user@example.com' // optional user identifier
 );
 
@@ -145,6 +152,12 @@ const updated = await auditedClient.updateTemplate(
 await auditedClient.deleteTemplate('my-template');
 // → Audit log created with operation_type='delete', state_before captured
 ```
+
+**Architecture**:
+- `lib/db/client.ts` - Drizzle D1 client initialization
+- `lib/db/schema.ts` - Drizzle schema definitions
+- `lib/db/audit-db.ts` - Audit database operations (Drizzle)
+- `lib/api/mandrill-audited.ts` - Audited Mandrill wrapper
 
 ## Storage Considerations
 
@@ -181,14 +194,18 @@ Set up automated cleanup with Cloudflare Workers Cron:
 [triggers]
 crons = ["0 2 * * *"] # Run at 2 AM daily
 
-// Add to your worker
+// Add scheduled handler
+import { drizzle } from 'drizzle-orm/d1';
+import * as schema from './lib/db/schema';
+import { getSettings, cleanupOldLogs } from './lib/db/audit-db';
+
 export default {
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
-    const prisma = initializePrisma(env.DB);
-    const settings = await getSettings(prisma);
+    const db = drizzle(env.DB, { schema });
+    const settings = await getSettings(db);
 
-    if (settings && settings.retention_days !== -1) {
-      await cleanupOldLogs(prisma, settings.retention_days);
+    if (settings && settings.retentionDays !== -1) {
+      await cleanupOldLogs(db, settings.retentionDays);
     }
   },
 };
@@ -220,20 +237,33 @@ curl https://your-app.workers.dev/api/audit/stats
 
 ### Audit Not Logging
 
-1. Check if audit is enabled: Settings → Audit Trail → Status
-2. Verify Prisma Client is initialized with D1 binding
+1. Check if audit is enabled: Navigate to `/audit` page → Check Status toggle
+2. Verify Drizzle client is initialized with D1 binding
 3. Check browser console for errors
 4. Verify database migration was applied: `wrangler d1 execute reddrill-audit --command "SELECT * FROM audit_settings"`
+5. **Local Development**: Must use `wrangler pages dev` (not `npm run dev`) to access D1
 
 ### Migration Issues
 
 ```bash
 # List migrations status
-wrangler d1 migrations list reddrill-audit
+npx wrangler d1 migrations list reddrill-audit
 
-# Force apply migration
-wrangler d1 execute reddrill-audit --file=./prisma/migrations/20250126000000_initial_audit_schema/migration.sql
+# Apply migrations
+npx wrangler d1 migrations apply reddrill-audit --local    # For local
+npx wrangler d1 migrations apply reddrill-audit --remote   # For production
+
+# Verify schema
+npx wrangler d1 execute reddrill-audit --command "SELECT name FROM sqlite_master WHERE type='table'"
 ```
+
+### UI Improvements
+
+All browser alerts and confirms have been replaced with beautiful inline UI:
+- **Error messages**: Inline Alert components with dismiss buttons
+- **Success messages**: Auto-dismissing notifications (3 seconds)
+- **Confirmations**: Proper modal dialogs with validation
+- **Delete operations**: Type-to-confirm pattern for safety
 
 ### Performance Issues
 

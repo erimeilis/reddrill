@@ -1,21 +1,23 @@
 /**
  * Audit Logs API
- * Query and search audit trail entries
+ * Query and search audit trail entries (filtered by API key)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/client';
 import { getAuditLogs, searchAuditLogs } from '@/lib/db/audit-db';
+import { getApiKeyHash } from '@/lib/api/audit-middleware';
 import { auditLogs } from '@/lib/db/schema';
 import { and, eq, like, gte, lte, count } from 'drizzle-orm';
 import type { AuditLogFilter } from '@/lib/types/audit';
 
 /**
  * GET /api/audit/logs
- * Get audit logs with optional filtering
+ * Get audit logs with optional filtering (for authenticated API key only)
  */
 export async function GET(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
     const searchParams = request.nextUrl.searchParams;
 
@@ -75,10 +77,10 @@ export async function GET(request: NextRequest) {
       filter.orderDir = orderDir.toUpperCase() as any;
     }
 
-    const logs = await getAuditLogs(db, filter);
+    const logs = await getAuditLogs(db, apiKeyHash, filter);
 
-    // Get total count for pagination
-    const conditions: any[] = [];
+    // Get total count for pagination (filtered by API key)
+    const conditions: any[] = [eq(auditLogs.apiKeyHash, apiKeyHash)];
     if (filter.operationType) {
       conditions.push(eq(auditLogs.operationType, filter.operationType));
     }
@@ -96,10 +98,7 @@ export async function GET(request: NextRequest) {
     }
 
     const countQuery = db.select({ count: count() }).from(auditLogs);
-    const totalCountResult = await (conditions.length > 0
-      ? countQuery.where(and(...conditions))
-      : countQuery
-    ).get();
+    const totalCountResult = await countQuery.where(and(...conditions)).get();
 
     const totalCount = totalCountResult?.count || 0;
 
@@ -113,17 +112,18 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching audit logs:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch logs' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }
 
 /**
  * POST /api/audit/logs/search
- * Search audit logs by text query
+ * Search audit logs by text query (for authenticated API key only)
  */
 export async function POST(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
     const { query, filter } = await request.json();
 
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'query parameter is required' }, { status: 400 });
     }
 
-    const logs = await searchAuditLogs(db, query, filter);
+    const logs = await searchAuditLogs(db, apiKeyHash, query, filter);
 
     return NextResponse.json({
       success: true,
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
     console.error('Error searching audit logs:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Search failed' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }

@@ -6,17 +6,23 @@
 import type { Database } from '../db/client';
 import type { MandrillTemplate } from './mandrill';
 import { logTemplateCreate, logTemplateUpdate, logTemplateDelete } from '../services/audit-service';
+import { hashApiKey } from '../db/audit-db';
 
 /**
  * Wrapper class that adds audit logging to MandrillClient operations
  * All audit operations are non-blocking - errors don't fail main operations
  */
 export class AuditedMandrillClient {
+  private apiKeyHash: Promise<string>;
+
   constructor(
     private mandrillClient: any,
     private db: Database,
+    apiKey: string,
     private userContext?: string
-  ) {}
+  ) {
+    this.apiKeyHash = hashApiKey(apiKey);
+  }
 
   /**
    * Pass-through method for template listing (no audit needed)
@@ -56,7 +62,9 @@ export class AuditedMandrillClient {
     );
 
     // Log creation (non-blocking - don't await)
-    logTemplateCreate(this.db, result, this.userContext).catch((error) => {
+    this.apiKeyHash.then(hash =>
+      logTemplateCreate(this.db, hash, result, this.userContext)
+    ).catch((error) => {
       console.error('Audit logging failed for template creation:', error);
     });
 
@@ -97,11 +105,14 @@ export class AuditedMandrillClient {
 
     // Log update (non-blocking - don't await)
     if (beforeState) {
-      logTemplateUpdate(
-        this.db,
-        beforeState,
-        result,
-        this.userContext
+      this.apiKeyHash.then(hash =>
+        logTemplateUpdate(
+          this.db,
+          hash,
+          beforeState,
+          result,
+          this.userContext
+        )
       ).catch((error) => {
         console.error('Audit logging failed for template update:', error);
       });
@@ -128,11 +139,11 @@ export class AuditedMandrillClient {
 
     // Log deletion (non-blocking - don't await)
     if (beforeState) {
-      logTemplateDelete(this.db, beforeState, this.userContext).catch(
-        (error) => {
-          console.error('Audit logging failed for template deletion:', error);
-        }
-      );
+      this.apiKeyHash.then(hash =>
+        logTemplateDelete(this.db, hash, beforeState, this.userContext)
+      ).catch((error) => {
+        console.error('Audit logging failed for template deletion:', error);
+      });
     }
 
     return result;
@@ -199,7 +210,8 @@ export class AuditedMandrillClient {
 export function createAuditedClient(
   mandrillClient: any,
   db: Database,
+  apiKey: string,
   userContext?: string
 ): AuditedMandrillClient {
-  return new AuditedMandrillClient(mandrillClient, db, userContext);
+  return new AuditedMandrillClient(mandrillClient, db, apiKey, userContext);
 }

@@ -34,19 +34,40 @@ Edit `wrangler.toml` and uncomment/set your account ID:
 account_id = "your-account-id-here"
 ```
 
+### 4. Set up D1 Database (Audit Trail)
+
+```bash
+# Create D1 database for audit trail
+npx wrangler d1 create reddrill-audit
+
+# Copy the database_id from output and update wrangler.toml
+# [[d1_databases]]
+# binding = "DB"
+# database_name = "reddrill-audit"
+# database_id = "your-database-id-here"
+
+# Apply migrations to remote D1
+npx wrangler d1 migrations apply reddrill-audit --remote
+```
+
+**Note**: The audit trail is optional but recommended for tracking template changes.
+
 ## Deployment
 
 ### First-Time Deployment
 
 ```bash
-npm run build:full
+# Build and deploy (includes D1 migration)
 npm run deploy
 ```
 
 This will:
 1. Build the Next.js application
 2. Generate the Cloudflare Worker bundle
-3. Deploy to Cloudflare Workers
+3. Apply D1 database migrations
+4. Deploy to Cloudflare Workers
+
+**Note**: The deploy script automatically runs `npm run build:full` and `npm run db:migrate:remote` before deployment.
 
 ### Subsequent Deployments
 

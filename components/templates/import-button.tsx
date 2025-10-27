@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { IconUpload } from '@tabler/icons-react';
+import { IconUpload, IconCheck, IconAlertCircle } from '@tabler/icons-react';
 import { ImportPreview } from './import-preview';
 import type { TemplateExportData } from '@/lib/utils/template-export';
 import { validateImportData } from '@/lib/utils/template-import';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface ImportButtonProps {
   currentTemplateCount: number;
@@ -17,6 +18,7 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
   const [validationWarnings, setValidationWarnings] = useState<any[]>([]);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -24,6 +26,7 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
 
     // Reset input for same file selection
     event.target.value = '';
+    setMessage(null);
 
     try {
       // Read file
@@ -34,7 +37,7 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
       try {
         jsonData = JSON.parse(text);
       } catch (error) {
-        alert('Invalid JSON file: The selected file is not a valid JSON file.');
+        setMessage({ type: 'error', text: 'Invalid JSON file: The selected file is not a valid JSON file.' });
         return;
       }
 
@@ -42,9 +45,9 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
       const validation = validateImportData(jsonData);
 
       if (!validation.valid) {
-        const errorMessages = validation.errors.slice(0, 3).map(err => err.message).join('\n');
-        const extraCount = validation.errors.length > 3 ? `\n...and ${validation.errors.length - 3} more errors` : '';
-        alert(`Validation failed:\n\n${errorMessages}${extraCount}`);
+        const errorMessages = validation.errors.slice(0, 3).map(err => err.message).join(', ');
+        const extraCount = validation.errors.length > 3 ? ` ...and ${validation.errors.length - 3} more errors` : '';
+        setMessage({ type: 'error', text: `Validation failed: ${errorMessages}${extraCount}` });
         return;
       }
 
@@ -55,7 +58,7 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
 
     } catch (error) {
       console.error('Import file read error:', error);
-      alert(`Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setMessage({ type: 'error', text: `Failed to read file: ${error instanceof Error ? error.message : 'Unknown error'}` });
     }
   };
 
@@ -63,24 +66,29 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
     if (!previewData) return;
 
     setIsImporting(true);
+    setMessage(null);
+
     try {
       await onImport(previewData);
 
       // Success
-      alert(`Successfully imported ${previewData.templates.length} templates`);
+      setMessage({ type: 'success', text: `Successfully imported ${previewData.templates.length} template${previewData.templates.length === 1 ? '' : 's'}` });
 
       setIsPreviewOpen(false);
       setPreviewData(null);
+
+      // Auto-clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error('Import error:', error);
-      alert(`Import failed: ${error instanceof Error ? error.message : 'Failed to import templates'}`);
+      setMessage({ type: 'error', text: `Import failed: ${error instanceof Error ? error.message : 'Failed to import templates'}` });
     } finally {
       setIsImporting(false);
     }
   };
 
   return (
-    <>
+    <div className="flex flex-col gap-2">
       <input
         ref={fileInputRef}
         type="file"
@@ -96,8 +104,19 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
         disabled={disabled || isImporting}
       >
         <IconUpload className="h-4 w-4 mr-2" />
-        Import
+        {isImporting ? 'Importing...' : 'Import'}
       </Button>
+
+      {message && (
+        <Alert variant={message.type === 'error' ? 'destructive' : 'default'} className="py-2">
+          {message.type === 'success' ? (
+            <IconCheck className="h-4 w-4" />
+          ) : (
+            <IconAlertCircle className="h-4 w-4" />
+          )}
+          <AlertDescription className="text-sm">{message.text}</AlertDescription>
+        </Alert>
+      )}
 
       {previewData && (
         <ImportPreview
@@ -112,6 +131,6 @@ export function ImportButton({ currentTemplateCount, onImport, disabled }: Impor
           warnings={validationWarnings}
         />
       )}
-    </>
+    </div>
   );
 }

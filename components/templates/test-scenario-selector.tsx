@@ -55,6 +55,7 @@ export function TestScenarioSelector({
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
 
   useEffect(() => {
     loadScenarios();
@@ -118,18 +119,16 @@ export function TestScenarioSelector({
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this scenario?')) {
-      return;
-    }
-
     try {
       await deleteScenario(id);
       await loadScenarios();
       if (selectedScenario?.id === id) {
         setSelectedScenario(null);
       }
+      setDeleteConfirm(null);
     } catch (err) {
       console.error('Error deleting scenario:', err);
+      setError('Failed to delete scenario');
     }
   };
 
@@ -191,7 +190,7 @@ export function TestScenarioSelector({
                     className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      scenario.id && handleDelete(scenario.id);
+                      setDeleteConfirm(scenario.id || null);
                     }}
                     title="Delete scenario"
                   >
@@ -276,6 +275,33 @@ export function TestScenarioSelector({
                 Save Scenario
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm !== null} onOpenChange={(open) => !open && setDeleteConfirm(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Test Scenario</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this scenario? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirm(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
+            >
+              <IconTrash className="mr-2 h-4 w-4" stroke={1.5} />
+              Delete
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

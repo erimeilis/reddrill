@@ -1,21 +1,23 @@
 /**
  * Audit Settings API
- * Manage audit trail configuration
+ * Manage audit trail configuration (per API key)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db/client';
 import { getSettings, updateSettings, isEnabled } from '@/lib/db/audit-db';
+import { getApiKeyHash } from '@/lib/api/audit-middleware';
 import type { AuditSettings } from '@/lib/types/audit';
 
 /**
  * GET /api/audit/settings
- * Retrieve current audit settings
+ * Retrieve current audit settings for the authenticated API key
  */
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
-    const settings = await getSettings(db);
+    const settings = await getSettings(db, apiKeyHash);
 
     if (!settings) {
       return NextResponse.json({ error: 'Settings not found' }, { status: 404 });
@@ -26,17 +28,18 @@ export async function GET() {
     console.error('Error fetching audit settings:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch settings' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }
 
 /**
  * PUT /api/audit/settings
- * Update audit settings
+ * Update audit settings for the authenticated API key
  */
 export async function PUT(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
     const updates: Partial<Omit<AuditSettings, 'id' | 'updated_at'>> = await request.json();
 
@@ -54,7 +57,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const updated = await updateSettings(db, updates);
+    const updated = await updateSettings(db, apiKeyHash, updates);
 
     return NextResponse.json({
       success: true,
@@ -64,19 +67,20 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating audit settings:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to update settings' },
-      { status: 500 }
+      { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 }
     );
   }
 }
 
 /**
- * GET /api/audit/settings/status
- * Quick check if audit is enabled
+ * HEAD /api/audit/settings/status
+ * Quick check if audit is enabled for the authenticated API key
  */
-export async function HEAD() {
+export async function HEAD(request: NextRequest) {
   try {
+    const apiKeyHash = await getApiKeyHash(request);
     const db = await getDb();
-    const enabled = await isEnabled(db);
+    const enabled = await isEnabled(db, apiKeyHash);
 
     return new NextResponse(null, {
       status: enabled ? 200 : 204,
@@ -85,6 +89,6 @@ export async function HEAD() {
       },
     });
   } catch (error) {
-    return new NextResponse(null, { status: 500 });
+    return new NextResponse(null, { status: error instanceof Error && error.message.includes('API key') ? 401 : 500 });
   }
 }

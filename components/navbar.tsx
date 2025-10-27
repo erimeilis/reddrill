@@ -20,18 +20,17 @@ import {
 import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail, IconClipboardList } from '@tabler/icons-react';
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
+import { useAuditApi } from '@/lib/hooks/useAuditApi';
 
-interface NavbarProps {
-  auditEnabled: boolean;
-}
-
-export function Navbar({ auditEnabled }: NavbarProps) {
+export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [auditEnabled, setAuditEnabled] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isConnected } = useMandrillConnection();
   const { apiKey, clearApiKey } = useMandrillStore();
+  const { auditFetch, hasApiKey } = useAuditApi();
 
   // Check if user has API key on component mount
   useEffect(() => {
@@ -45,6 +44,42 @@ export function Navbar({ auditEnabled }: NavbarProps) {
 
     checkApiKey();
   }, [pathname, apiKey]);
+
+  // Fetch audit settings when user is connected
+  useEffect(() => {
+    const fetchAuditSettings = async () => {
+      if (!hasApiKey || !isConnected) {
+        setAuditEnabled(false);
+        return;
+      }
+
+      try {
+        const response = await auditFetch('/api/audit/settings');
+        if (response.ok) {
+          const settings = await response.json();
+          setAuditEnabled(settings.enabled === 1);
+        } else {
+          setAuditEnabled(false);
+        }
+      } catch (error) {
+        console.error('Failed to fetch audit settings:', error);
+        setAuditEnabled(false);
+      }
+    };
+
+    fetchAuditSettings();
+
+    // Listen for audit settings changes
+    const handleAuditSettingsChange = () => {
+      fetchAuditSettings();
+    };
+
+    window.addEventListener('auditSettingsChanged', handleAuditSettingsChange);
+
+    return () => {
+      window.removeEventListener('auditSettingsChanged', handleAuditSettingsChange);
+    };
+  }, [hasApiKey, isConnected, auditFetch]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);

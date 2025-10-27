@@ -42,6 +42,9 @@ export const auditLogs = sqliteTable(
     // User context
     userIdentifier: text('user_identifier'),
 
+    // API key isolation (hashed for security)
+    apiKeyHash: text('api_key_hash').notNull().default(''),
+
     // Error tracking
     errorMessage: text('error_message'),
     errorDetails: text('error_details'),
@@ -65,15 +68,21 @@ export const auditLogs = sqliteTable(
       table.operationType,
       table.createdAt
     ),
+    apiKeyHashIdx: index('audit_logs_api_key_hash_idx').on(table.apiKeyHash),
+    apiKeyHashCreatedAtIdx: index('audit_logs_api_key_created_at_idx').on(
+      table.apiKeyHash,
+      table.createdAt
+    ),
   })
 );
 
-// User settings (singleton table)
+// User settings (per API key, not singleton anymore)
 export const auditSettings = sqliteTable('audit_settings', {
-  id: integer('id').primaryKey().default(1),
+  id: integer('id').primaryKey({ autoIncrement: true }),
   enabled: integer('enabled').notNull().default(0), // 0 or 1 (SQLite boolean)
   retentionDays: integer('retention_days').notNull().default(30), // -1 = forever
   userIdentifier: text('user_identifier'),
+  apiKeyHash: text('api_key_hash').notNull().default(''),
   updatedAt: integer('updated_at', { mode: 'timestamp' })
     .notNull()
     .default(sql`(unixepoch())`),
