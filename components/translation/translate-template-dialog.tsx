@@ -205,7 +205,7 @@ export function TranslateTemplateDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-[95vw] w-[1400px] max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-[95vw] w-[1400px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <IconLanguage size={24} />
@@ -216,7 +216,7 @@ export function TranslateTemplateDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        <div className="space-y-4">
           {!translatedHtml ? (
             // Translation setup
             <div className="space-y-4">

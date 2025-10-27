@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Pagination } from '@/components/ui/pagination';
 import { IconSearch, IconFilter, IconRefresh, IconFileExport, IconX } from '@tabler/icons-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditLog, AuditLogFilter } from '@/lib/types/audit';
@@ -17,6 +18,7 @@ import { AuditDetailModal } from './audit-detail-modal';
 
 export function AuditLogsViewer() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -57,6 +59,7 @@ export function AuditLogsViewer() {
 
       const data = await response.json();
       setLogs(data.logs || []);
+      setTotalCount(data.totalCount || 0);
     } catch (err) {
       console.error('Failed to load audit logs:', err);
       setError(err instanceof Error ? err.message : 'Failed to load logs');
@@ -92,6 +95,7 @@ export function AuditLogsViewer() {
 
       const data = await response.json();
       setLogs(data.logs || []);
+      setTotalCount(data.totalCount || data.logs?.length || 0);
     } catch (err) {
       console.error('Search failed:', err);
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -298,92 +302,83 @@ export function AuditLogsViewer() {
 
       {/* Logs Table */}
       <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Timestamp</TableHead>
-                <TableHead>Operation</TableHead>
-                <TableHead>Template</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>User</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {logs.length === 0 ? (
+        <CardContent>
+          <div className="max-h-[calc(100vh-28rem)] overflow-y-auto overflow-x-auto">
+            <Table>
+              <TableHeader className="sticky top-0 bg-background z-10 border-b">
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    No audit logs found
-                  </TableCell>
+                  <TableHead>Timestamp</TableHead>
+                  <TableHead>Operation</TableHead>
+                  <TableHead>Template</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                logs.map((log) => (
-                  <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50">
-                    <TableCell className="font-mono text-xs">
-                      {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
-                    </TableCell>
-                    <TableCell>
-                      {getOperationBadge(log.operationType)}
-                      {log.bulkOperation === 1 && (
-                        <Badge variant="outline" className="ml-2">
-                          Bulk
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">
-                      {log.templateName}
-                      {log.templateSlug && (
-                        <div className="text-xs text-muted-foreground truncate">
-                          {log.templateSlug}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(log.operationStatus)}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
-                      {log.userIdentifier || '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedLogId(log.id);
-                          setModalOpen(true);
-                        }}
-                      >
-                        Details
-                      </Button>
+              </TableHeader>
+              <TableBody>
+                {logs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      No audit logs found
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  logs.map((log) => (
+                    <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell className="font-mono text-xs">
+                        {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
+                      </TableCell>
+                      <TableCell>
+                        {getOperationBadge(log.operationType)}
+                        {log.bulkOperation === 1 && (
+                          <Badge variant="outline" className="ml-2">
+                            Bulk
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {log.templateName}
+                        {log.templateSlug && (
+                          <div className="text-xs text-muted-foreground truncate">
+                            {log.templateSlug}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>{getStatusBadge(log.operationStatus)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
+                        {log.userIdentifier || '—'}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedLogId(log.id);
+                            setModalOpen(true);
+                          }}
+                        >
+                          Details
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Pagination */}
       {logs.length > 0 && (
-        <div className="flex justify-between items-center">
-          <Button
-            variant="outline"
-            onClick={() => setFilter({ ...filter, offset: Math.max(0, (filter.offset || 0) - (filter.limit || 50)) })}
-            disabled={!filter.offset || filter.offset === 0}
-          >
-            Previous
-          </Button>
-          <div className="text-sm text-muted-foreground">
-            Offset: {filter.offset || 0}
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => setFilter({ ...filter, offset: (filter.offset || 0) + (filter.limit || 50) })}
-            disabled={logs.length < (filter.limit || 50)}
-          >
-            Next
-          </Button>
-        </div>
+        <Pagination
+          currentPage={Math.floor((filter.offset || 0) / (filter.limit || 50)) + 1}
+          totalPages={Math.ceil(totalCount / (filter.limit || 50))}
+          totalItems={totalCount}
+          itemsPerPage={filter.limit || 50}
+          onPageChange={(page) => setFilter({ ...filter, offset: (page - 1) * (filter.limit || 50) })}
+          itemName="logs"
+        />
       )}
 
       {/* Audit Detail Modal */}

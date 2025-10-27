@@ -81,9 +81,21 @@ export async function GET(request: NextRequest) {
 
     const logs = await getAuditLogs(prisma, filter);
 
+    // Get total count for pagination
+    const totalCount = await prisma.auditLog.count({
+      where: {
+        ...(filter.operationType && { operationType: filter.operationType }),
+        ...(filter.templateName && { templateName: { contains: filter.templateName } }),
+        ...(filter.status && { operationStatus: filter.status }),
+        ...(filter.dateFrom && { createdAt: { gte: new Date(filter.dateFrom) } }),
+        ...(filter.dateTo && { createdAt: { lte: new Date(filter.dateTo) } }),
+      },
+    });
+
     return NextResponse.json({
       success: true,
       logs,
+      totalCount,
       filter,
     });
   } catch (error) {

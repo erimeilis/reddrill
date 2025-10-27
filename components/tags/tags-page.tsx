@@ -182,17 +182,17 @@ export function TagsPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto -mx-6">
+              <div className="max-h-[calc(100vh-20rem)] overflow-y-auto overflow-x-auto">
                 <Table className="w-full">
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10 border-b">
                   <TableRow>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer w-1/3"
                       onClick={() => handleSort('tag')}
                     >
                       Tag{renderSortIndicator('tag')}
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer"
                       onClick={() => handleSort('reputation')}
                     >

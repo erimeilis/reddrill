@@ -185,17 +185,17 @@ export function SendersPage() {
             </div>
           ) : (
             <>
-              <div className="overflow-x-auto -mx-6">
+              <div className="max-h-[calc(100vh-20rem)] overflow-y-auto overflow-x-auto">
                 <Table className="w-full">
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-background z-10 border-b">
                   <TableRow>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer w-1/3"
                       onClick={() => handleSort('address')}
                     >
                       Address{renderSortIndicator('address')}
                     </TableHead>
-                    <TableHead 
+                    <TableHead
                       className="cursor-pointer"
                       onClick={() => handleSort('created_at')}
                     >
@@ -296,7 +296,7 @@ export function SendersPage() {
 
       {/* Sender Detail Dialog */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Sender Details: {selectedSender}</DialogTitle>
             <DialogDescription>

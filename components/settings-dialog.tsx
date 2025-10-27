@@ -23,7 +23,7 @@ export function SettingsDialog() {
           <IconSettings size={20} stroke={1.5} />
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl">
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>

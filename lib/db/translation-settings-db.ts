@@ -119,6 +119,16 @@ export async function getPrimaryProvider() {
   return primary;
 }
 
+export async function setPrimaryProvider(provider: string) {
+  const db = await getTranslationDB();
+
+  // Unset all other providers as primary
+  const allProviders = await db.getAll('translation-providers');
+  for (const p of allProviders) {
+    await db.put('translation-providers', { ...p, isPrimary: p.provider === provider });
+  }
+}
+
 export async function deleteProvider(provider: string) {
   const db = await getTranslationDB();
   await db.delete('translation-providers', provider);

@@ -358,9 +358,9 @@ export function TemplatesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="max-h-[calc(100vh-32rem)] overflow-y-auto overflow-x-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 bg-background z-10 border-b">
                 <TableRow>
                   <TableHead className="cursor-pointer">
                     Theme

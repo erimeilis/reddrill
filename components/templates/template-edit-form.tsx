@@ -16,6 +16,7 @@ import grapesJSPresetNewsletter from 'grapesjs-preset-newsletter';
 import { useTemplate, useTemplates, updateTemplate as updateTemplateApi, deleteTemplate as deleteTemplateApi, createTemplate as createTemplateApi } from '@/lib/hooks/use-templates';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { PromptDialog } from '@/components/ui/prompt-dialog';
+import { normalizeHtmlForEditor } from '@/lib/utils/html-normalizer';
 
 const GjsEditor = dynamic(() => import('@grapesjs/react').then(mod => mod.default), {
   ssr: false,
@@ -310,7 +311,7 @@ export function TemplateEditForm({ templateSlug }: TemplateEditFormProps) {
             <CardTitle>Edit Template: {template?.name}</CardTitle>
             <div className="flex gap-2">
               <Button
-                variant="default"
+                variant="accent"
                 onClick={() => router.push(`/templates/${templateSlug}/test`)}
                 disabled={saving || deleting || cloning}
                 title="Test template with dynamic data"
@@ -495,8 +496,9 @@ export function TemplateEditForm({ templateSlug }: TemplateEditFormProps) {
                   const isRawPlaceholder = code === '*|raw|*' || code === '*!raw!*' || code === '';
 
                   if (hasHtmlTags && code.length > 50) {
-                    // Has real HTML structure - load it directly
-                    editor.setComponents(code);
+                    // Has real HTML structure - normalize to wrap raw text nodes in <p> tags
+                    const normalizedHtml = normalizeHtmlForEditor(code);
+                    editor.setComponents(normalizedHtml);
                   } else if (isRawPlaceholder) {
                     // Empty or raw placeholder - use starter template
                     editor.setComponents(`

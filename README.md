@@ -43,6 +43,18 @@
 - **Test Scenarios** - Save and manage test scenarios with IndexedDB for quick testing
 - **Visual Placeholder List** - See all placeholders used in template with usage count
 
+### 📋 Audit Trail System (Fully Implemented ✅)
+- **Complete Operation Tracking** - Logs all template create, update, and delete operations
+- **Before/After State Capture** - Full template state snapshots for every change
+- **Change Summaries** - Field-level change tracking with old and new values
+- **Bulk Operation Support** - Track batch operations with success/failure counts
+- **Detailed Modal View** - Inspect audit logs with tabbed views (Changes, Before, After, Raw JSON)
+- **User Identification** - Track which user performed each operation
+- **Operation Status** - Success, partial, or failure status for each operation
+- **SQLite Storage** - Persistent audit logs with Prisma ORM
+- **Configurable Retention** - Auto-cleanup based on retention policies
+- **Export Capability** - Export audit logs for compliance and reporting
+
 ### 🏷️ Tags (Under Development 🚧)
 - Analytics with reputation scores
 - Delete tags from UI
@@ -318,13 +330,15 @@ All providers support:
 
 **Translation:** Cloudflare Workers AI • Google Cloud Translation • Azure Translator • Crowdin
 
+**Database:** Prisma ORM • SQLite (audit logs) • IndexedDB (settings, cache, test scenarios)
+
 **Performance:** React Compiler • Cache Components • Turbopack File System Caching
 
 **Deployment:** Cloudflare Workers • OpenNext.js
 
 **Dev Tools:** ESLint 9 • Next.js DevTools MCP • Turbopack
 
-**Storage:** IndexedDB (idb) for client-side settings and translation cache
+**Storage:** IndexedDB (idb) for client-side settings and translation cache • SQLite for audit trail persistence
 
 ---
 
@@ -410,13 +424,24 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
 reddrill/
 ├── app/                           # Next.js App Router
 │   ├── @entity/                  # Entity details parallel route
-│   │   └── templates/[slug]/     # Template edit form
-│   │       └── test/             # Template testing page
+│   │   ├── templates/[slug]/     # Template edit form
+│   │   │   └── test/             # Template testing page
+│   │   ├── audit/default.tsx     # Clear @entity slot on audit page
+│   │   ├── tags/default.tsx      # Clear @entity slot on tags page
+│   │   └── senders/default.tsx   # Clear @entity slot on senders page
 │   ├── @structure/               # List views parallel route
 │   │   ├── templates/            # Template list (table/tree)
 │   │   ├── tags/                 # Tags list
-│   │   └── senders/              # Senders list
+│   │   ├── senders/              # Senders list
+│   │   └── audit/                # Audit logs list
 │   ├── api/
+│   │   ├── audit/
+│   │   │   ├── log/              # Create audit log entry
+│   │   │   ├── logs/             # Query audit logs
+│   │   │   ├── logs/[id]/        # Get audit log by ID
+│   │   │   ├── stats/            # Audit statistics
+│   │   │   ├── cleanup/          # Cleanup old logs
+│   │   │   └── settings/         # Audit settings
 │   │   ├── templates/[slug]/
 │   │   │   ├── preview/          # Template preview API
 │   │   │   └── send-test/        # Send test email API
@@ -426,6 +451,10 @@ reddrill/
 │
 ├── components/
 │   ├── ui/                       # Reusable Radix UI components
+│   ├── audit/
+│   │   ├── audit-logs-viewer.tsx        # Audit logs table view
+│   │   ├── audit-detail-modal.tsx       # Detailed audit log modal
+│   │   └── audit-settings.tsx           # Audit configuration
 │   ├── templates/
 │   │   ├── template-edit-form.tsx       # GrapesJS editor
 │   │   ├── template-tree-view.tsx       # Hierarchical tree view
@@ -447,15 +476,26 @@ reddrill/
 │   ├── api/
 │   │   └── mandrill.ts           # Mandrill API client
 │   ├── db/
+│   │   ├── audit-db.ts           # Prisma/SQLite audit operations
 │   │   ├── translation-settings-db.ts  # IndexedDB for settings
 │   │   └── test-scenarios-db.ts        # IndexedDB for test scenarios
 │   ├── hooks/                    # Custom React hooks
+│   ├── services/
+│   │   └── audit-service.ts      # Audit trail business logic
 │   ├── store/                    # Zustand state stores
+│   ├── types/
+│   │   └── audit.ts              # Audit trail types
 │   └── utils/
 │       ├── html-translator.ts    # HTML parsing for translation
 │       ├── placeholder-parser.ts # Placeholder detection & validation
 │       ├── template-parser.ts    # Parse {theme}_{locale} pattern
-│       └── template-tree.ts      # Build tree from templates
+│       ├── template-tree.ts      # Build tree from templates
+│       └── template-diff.ts      # Calculate template diffs
+│
+├── prisma/
+│   ├── schema.prisma             # Prisma schema for audit logs
+│   ├── migrations/               # Database migrations
+│   └── dev.db                    # SQLite database (development)
 │
 ├── types/                        # TypeScript type definitions
 ├── wrangler.toml                 # Cloudflare Workers config
@@ -548,6 +588,7 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ### State & Data
 - [Zustand](https://zustand-demo.pmnd.rs/) - Lightweight state management
 - [idb](https://github.com/jakearchibald/idb) - IndexedDB wrapper
+- [Prisma](https://www.prisma.io/) - Next-generation ORM for Node.js and TypeScript
 
 ---
 

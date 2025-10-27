@@ -10,7 +10,8 @@ import { IconCheck, IconAlertCircle, IconExternalLink, IconInfoCircle } from '@t
 import {
   saveProviderSettings,
   getAllProviders,
-  deleteProvider
+  deleteProvider,
+  setPrimaryProvider
 } from '@/lib/db/translation-settings-db';
 
 type Provider = 'cloudflare' | 'google' | 'azure' | 'crowdin';
@@ -95,6 +96,17 @@ export function TranslationSettings() {
       setMessage({ type: 'error', text: 'Failed to save provider settings' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSetPrimary = async (providerName: string) => {
+    try {
+      await setPrimaryProvider(providerName);
+      setMessage({ type: 'success', text: `${providerName} is now the primary provider` });
+      await loadProviders();
+    } catch (error) {
+      console.error('Failed to set primary provider:', error);
+      setMessage({ type: 'error', text: 'Failed to set primary provider' });
     }
   };
 
@@ -336,24 +348,35 @@ export function TranslationSettings() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium capitalize">{p.provider}</span>
                       {p.isPrimary && (
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        <span className="text-xs bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-1 rounded">
                           Primary
                         </span>
                       )}
                     </div>
                     {p.apiKey && (
-                      <p className="text-sm text-gray-500 mt-1">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         API Key: {p.apiKey.slice(0, 8)}...
                       </p>
                     )}
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDelete(p.provider)}
-                  >
-                    Delete
-                  </Button>
+                  <div className="flex gap-2">
+                    {!p.isPrimary && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSetPrimary(p.provider)}
+                      >
+                        Set as Primary
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleDelete(p.provider)}
+                    >
+                      Delete
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>

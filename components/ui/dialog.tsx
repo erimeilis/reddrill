@@ -60,19 +60,21 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg overflow-hidden",
+          "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 flex flex-col w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] rounded-lg border shadow-lg duration-200 sm:max-w-4xl max-h-[90vh]",
           "dark:border-primary/30 dark:shadow-[0_0_0_1px_rgba(13,148,136,0.2),0_0_32px_rgba(13,148,136,0.15),0_0_64px_rgba(99,102,241,0.12),0_0_96px_rgba(139,92,246,0.08)]",
           className
         )}
         {...props}
       >
-        {children}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          {children}
+        </div>
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className="absolute top-3 right-3 z-50 border-none bg-transparent rounded-full p-1.5 text-muted-foreground/60 transition-colors hover:text-foreground hover:bg-accent/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none"
           >
-            <IconX size={16} stroke={2} />
+            <IconX size={14} stroke={1.5} />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>
         )}
