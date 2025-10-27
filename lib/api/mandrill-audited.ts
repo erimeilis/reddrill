@@ -3,13 +3,9 @@
  * Wraps MandrillClient to provide transparent audit logging
  */
 
-import { PrismaClient } from '@prisma/client';
+import type { Database } from '../db/client';
 import type { MandrillTemplate } from './mandrill';
-import {
-  logTemplateCreate,
-  logTemplateUpdate,
-  logTemplateDelete,
-} from '../services/audit-service';
+import { logTemplateCreate, logTemplateUpdate, logTemplateDelete } from '../services/audit-service';
 
 /**
  * Wrapper class that adds audit logging to MandrillClient operations
@@ -18,7 +14,7 @@ import {
 export class AuditedMandrillClient {
   constructor(
     private mandrillClient: any,
-    private prismaClient: PrismaClient,
+    private db: Database,
     private userContext?: string
   ) {}
 
@@ -60,11 +56,9 @@ export class AuditedMandrillClient {
     );
 
     // Log creation (non-blocking - don't await)
-    logTemplateCreate(this.prismaClient, result, this.userContext).catch(
-      (error) => {
-        console.error('Audit logging failed for template creation:', error);
-      }
-    );
+    logTemplateCreate(this.db, result, this.userContext).catch((error) => {
+      console.error('Audit logging failed for template creation:', error);
+    });
 
     return result;
   }
@@ -104,7 +98,7 @@ export class AuditedMandrillClient {
     // Log update (non-blocking - don't await)
     if (beforeState) {
       logTemplateUpdate(
-        this.prismaClient,
+        this.db,
         beforeState,
         result,
         this.userContext
@@ -134,7 +128,7 @@ export class AuditedMandrillClient {
 
     // Log deletion (non-blocking - don't await)
     if (beforeState) {
-      logTemplateDelete(this.prismaClient, beforeState, this.userContext).catch(
+      logTemplateDelete(this.db, beforeState, this.userContext).catch(
         (error) => {
           console.error('Audit logging failed for template deletion:', error);
         }
@@ -204,8 +198,8 @@ export class AuditedMandrillClient {
  */
 export function createAuditedClient(
   mandrillClient: any,
-  prismaClient: PrismaClient,
+  db: Database,
   userContext?: string
 ): AuditedMandrillClient {
-  return new AuditedMandrillClient(mandrillClient, prismaClient, userContext);
+  return new AuditedMandrillClient(mandrillClient, db, userContext);
 }

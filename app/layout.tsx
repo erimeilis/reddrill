@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans } from "next/font/google";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { NavbarWrapper } from "@/components/navbar-wrapper";
@@ -21,7 +22,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
   entity,
   structure,
@@ -30,6 +31,8 @@ export default function RootLayout({
   entity: React.ReactNode;
   structure: React.ReactNode;
 }>) {
+  // Access request data first to satisfy Next.js 16 prerendering requirements
+  await headers();
   return (
     <html lang="en" suppressHydrationWarning>
       <head>

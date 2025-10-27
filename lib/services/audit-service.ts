@@ -3,39 +3,25 @@
  * High-level audit operations and business logic
  */
 
-import { PrismaClient } from '@prisma/client';
+import type { Database } from '../db/client';
 import type { MandrillTemplate } from '../api/mandrill';
-import type {
-  AuditLog,
-  RestoreOptions,
-  RestoreResult,
-  ImportResult,
-} from '../types/audit';
-import {
-  createAuditLog,
-  createBulkAuditLog,
-  getAuditLogById,
-  isEnabled,
-} from '../db/audit-db';
-import {
-  templateToAuditState,
-  generateChangesSummary,
-  buildSearchText,
-} from '../utils/template-diff';
+import type { AuditLog, RestoreOptions, RestoreResult, ImportResult } from '../types/audit';
+import { createAuditLog, createBulkAuditLog, getAuditLogById, isEnabled } from '../db/audit-db';
+import { templateToAuditState, generateChangesSummary, buildSearchText } from '../utils/template-diff';
 
 /**
  * Log template creation
  */
 export async function logTemplateCreate(
-  client: PrismaClient,
+  db: Database,
   template: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(client);
+    const enabled = await isEnabled(db);
     if (!enabled) return;
 
-    await createAuditLog(client, {
+    await createAuditLog(db, {
       operationType: 'create',
       operationStatus: 'success',
       templateSlug: template.slug,
@@ -53,20 +39,20 @@ export async function logTemplateCreate(
  * Log template update
  */
 export async function logTemplateUpdate(
-  client: PrismaClient,
+  db: Database,
   before: MandrillTemplate,
   after: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(client);
+    const enabled = await isEnabled(db);
     if (!enabled) return;
 
     const beforeState = templateToAuditState(before);
     const afterState = templateToAuditState(after);
     const changes = generateChangesSummary(beforeState, afterState);
 
-    await createAuditLog(client, {
+    await createAuditLog(db, {
       operationType: 'update',
       operationStatus: 'success',
       templateSlug: after.slug,
@@ -85,15 +71,15 @@ export async function logTemplateUpdate(
  * Log template deletion
  */
 export async function logTemplateDelete(
-  client: PrismaClient,
+  db: Database,
   template: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(client);
+    const enabled = await isEnabled(db);
     if (!enabled) return;
 
-    await createAuditLog(client, {
+    await createAuditLog(db, {
       operationType: 'delete',
       operationStatus: 'success',
       templateSlug: template.slug,
@@ -110,18 +96,18 @@ export async function logTemplateDelete(
  * Log bulk import operation
  */
 export async function logBulkImport(
-  client: PrismaClient,
+  db: Database,
   result: ImportResult,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(client);
+    const enabled = await isEnabled(db);
     if (!enabled) return;
 
     const operationId = `import-${Date.now()}`;
     const status = result.failed === 0 ? 'success' : result.imported > 0 ? 'partial' : 'failure';
 
-    await createBulkAuditLog(client, {
+    await createBulkAuditLog(db, {
       operationType: 'import',
       operationStatus: status,
       operationId: operationId,
@@ -143,16 +129,16 @@ export async function logBulkImport(
  * Log restore operation
  */
 export async function logRestore(
-  client: PrismaClient,
+  db: Database,
   auditLog: AuditLog,
   restoredTemplate: MandrillTemplate,
   userContext?: string
 ): Promise<void> {
   try {
-    const enabled = await isEnabled(client);
+    const enabled = await isEnabled(db);
     if (!enabled) return;
 
-    await createAuditLog(client, {
+    await createAuditLog(db, {
       operationType: 'restore',
       operationStatus: 'success',
       operationId: `restore-from-${auditLog.id}`,
@@ -171,7 +157,7 @@ export async function logRestore(
  * Note: Actual Mandrill API call must be done by caller
  */
 export async function prepareRestore(
-  client: PrismaClient,
+  db: Database,
   logId: number,
   options?: RestoreOptions
 ): Promise<{
@@ -180,7 +166,7 @@ export async function prepareRestore(
   error?: string;
 }> {
   try {
-    const auditLog = await getAuditLogById(client, logId);
+    const auditLog = await getAuditLogById(db, logId);
 
     if (!auditLog) {
       return {
@@ -191,9 +177,8 @@ export async function prepareRestore(
 
     // For delete operations, restore from stateBefore
     // For update operations, restore from stateBefore
-    const stateToRestore = auditLog.operationType === 'delete'
-      ? auditLog.stateBefore
-      : auditLog.stateBefore;
+    const stateToRestore =
+      auditLog.operationType === 'delete' ? auditLog.stateBefore : auditLog.stateBefore;
 
     if (!stateToRestore) {
       return {

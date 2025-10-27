@@ -4,13 +4,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrismaClient } from '@/lib/db/audit-db';
-import {
-  getAuditLogs,
-  searchAuditLogs,
-  getAuditLogById,
-  getAuditStats,
-} from '@/lib/db/audit-db';
+import { getDb } from '@/lib/db/client';
+import { getAuditLogs, searchAuditLogs } from '@/lib/db/audit-db';
+import { auditLogs } from '@/lib/db/schema';
+import { and, eq, like, gte, lte, count } from 'drizzle-orm';
 import type { AuditLogFilter } from '@/lib/types/audit';
 
 /**
@@ -19,7 +16,7 @@ import type { AuditLogFilter } from '@/lib/types/audit';
  */
 export async function GET(request: NextRequest) {
   try {
-    const prisma = getPrismaClient();
+    const db = await getDb();
     const searchParams = request.nextUrl.searchParams;
 
     // Build filter from query parameters
@@ -62,7 +59,6 @@ export async function GET(request: NextRequest) {
 
     const orderBy = searchParams.get('order_by');
     if (orderBy) {
-      // Convert snake_case to camelCase for Prisma
       const orderByMapping: Record<string, 'createdAt' | 'templateName' | 'operationType'> = {
         'created_at': 'createdAt',
         'template_name': 'templateName',
@@ -79,18 +75,33 @@ export async function GET(request: NextRequest) {
       filter.orderDir = orderDir.toUpperCase() as any;
     }
 
-    const logs = await getAuditLogs(prisma, filter);
+    const logs = await getAuditLogs(db, filter);
 
     // Get total count for pagination
-    const totalCount = await prisma.auditLog.count({
-      where: {
-        ...(filter.operationType && { operationType: filter.operationType }),
-        ...(filter.templateName && { templateName: { contains: filter.templateName } }),
-        ...(filter.status && { operationStatus: filter.status }),
-        ...(filter.dateFrom && { createdAt: { gte: new Date(filter.dateFrom) } }),
-        ...(filter.dateTo && { createdAt: { lte: new Date(filter.dateTo) } }),
-      },
-    });
+    const conditions: any[] = [];
+    if (filter.operationType) {
+      conditions.push(eq(auditLogs.operationType, filter.operationType));
+    }
+    if (filter.templateName) {
+      conditions.push(like(auditLogs.templateName, `%${filter.templateName}%`));
+    }
+    if (filter.status) {
+      conditions.push(eq(auditLogs.operationStatus, filter.status));
+    }
+    if (filter.dateFrom) {
+      conditions.push(gte(auditLogs.createdAt, new Date(filter.dateFrom)));
+    }
+    if (filter.dateTo) {
+      conditions.push(lte(auditLogs.createdAt, new Date(filter.dateTo)));
+    }
+
+    const countQuery = db.select({ count: count() }).from(auditLogs);
+    const totalCountResult = await (conditions.length > 0
+      ? countQuery.where(and(...conditions))
+      : countQuery
+    ).get();
+
+    const totalCount = totalCountResult?.count || 0;
 
     return NextResponse.json({
       success: true,
@@ -113,17 +124,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const prisma = getPrismaClient();
+    const db = await getDb();
     const { query, filter } = await request.json();
 
     if (!query || typeof query !== 'string') {
-      return NextResponse.json(
-        { error: 'query parameter is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'query parameter is required' }, { status: 400 });
     }
 
-    const logs = await searchAuditLogs(prisma, query, filter);
+    const logs = await searchAuditLogs(db, query, filter);
 
     return NextResponse.json({
       success: true,

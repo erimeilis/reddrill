@@ -21,6 +21,8 @@ export function AuditSettingsComponent() {
   const [saving, setSaving] = useState(false);
   const [cleaning, setCleaning] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false);
+  const [clearAllInput, setClearAllInput] = useState('');
 
   // Load settings on mount
   useEffect(() => {
@@ -89,10 +91,6 @@ export function AuditSettingsComponent() {
   };
 
   const handleCleanup = async () => {
-    if (!confirm('Are you sure you want to clean up old audit logs? This cannot be undone.')) {
-      return;
-    }
-
     setCleaning(true);
     setMessage(null);
 
@@ -122,11 +120,11 @@ export function AuditSettingsComponent() {
   };
 
   const handleClearAll = async () => {
-    if (!confirm('WARNING: This will delete ALL audit logs permanently. Are you sure?')) {
-      return;
-    }
-
-    if (!confirm('This action cannot be undone. Type "DELETE ALL" to confirm.')) {
+    if (clearAllInput !== 'DELETE ALL') {
+      setMessage({
+        type: 'error',
+        text: 'Please type "DELETE ALL" exactly to confirm'
+      });
       return;
     }
 
@@ -147,6 +145,8 @@ export function AuditSettingsComponent() {
       }
 
       setMessage({ type: 'success', text: 'All audit logs cleared' });
+      setShowClearAllConfirm(false);
+      setClearAllInput('');
     } catch (error) {
       console.error('Failed to clear logs:', error);
       setMessage({ type: 'error', text: 'Failed to clear logs' });
@@ -314,13 +314,72 @@ export function AuditSettingsComponent() {
             </Button>
             <Button
               variant="destructive"
-              onClick={handleClearAll}
+              onClick={() => setShowClearAllConfirm(!showClearAllConfirm)}
               disabled={cleaning}
             >
               <IconTrash className="mr-2 h-4 w-4" />
               Clear All Logs
             </Button>
           </div>
+
+          {/* Inline Confirmation for Clear All */}
+          {showClearAllConfirm && (
+            <Alert variant="destructive" className="space-y-3">
+              <div className="flex items-start gap-2">
+                <IconAlertTriangle className="h-5 w-5 mt-0.5" />
+                <div className="flex-1 space-y-2">
+                  <AlertDescription className="font-semibold">
+                    WARNING: This will permanently delete ALL audit logs!
+                  </AlertDescription>
+                  <AlertDescription className="text-sm">
+                    This action cannot be undone. Type <strong>DELETE ALL</strong> below to confirm:
+                  </AlertDescription>
+                  <div className="space-y-2">
+                    <Input
+                      type="text"
+                      placeholder="Type DELETE ALL to confirm"
+                      value={clearAllInput}
+                      onChange={(e) => setClearAllInput(e.target.value)}
+                      className="bg-background"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleClearAll}
+                        disabled={cleaning || clearAllInput !== 'DELETE ALL'}
+                      >
+                        {cleaning ? (
+                          <>
+                            <IconRefresh className="mr-2 h-4 w-4 animate-spin" />
+                            Deleting...
+                          </>
+                        ) : (
+                          <>
+                            <IconTrash className="mr-2 h-4 w-4" />
+                            Confirm Delete All
+                          </>
+                        )}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setShowClearAllConfirm(false);
+                          setClearAllInput('');
+                        }}
+                        disabled={cleaning}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Alert>
+          )}
+
           <p className="text-sm text-muted-foreground">
             <strong>Clean Up Old Logs:</strong> Removes logs older than the retention period.
             <br />

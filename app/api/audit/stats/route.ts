@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getPrismaClient } from '@/lib/db/audit-db';
+import { getDb } from '@/lib/db/client';
 import { getAuditStats } from '@/lib/db/audit-db';
 
 /**
@@ -13,8 +13,8 @@ import { getAuditStats } from '@/lib/db/audit-db';
  */
 export async function GET() {
   try {
-    const prisma = getPrismaClient();
-    const stats = await getAuditStats(prisma);
+    const db = await getDb();
+    const stats = await getAuditStats(db);
 
     return NextResponse.json({
       success: true,

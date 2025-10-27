@@ -4,12 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrismaClient } from '@/lib/db/audit-db';
-import {
-  getSettings,
-  updateSettings,
-  isEnabled,
-} from '@/lib/db/audit-db';
+import { getDb } from '@/lib/db/client';
+import { getSettings, updateSettings, isEnabled } from '@/lib/db/audit-db';
 import type { AuditSettings } from '@/lib/types/audit';
 
 /**
@@ -18,14 +14,11 @@ import type { AuditSettings } from '@/lib/types/audit';
  */
 export async function GET() {
   try {
-    const prisma = getPrismaClient();
-    const settings = await getSettings(prisma);
+    const db = await getDb();
+    const settings = await getSettings(db);
 
     if (!settings) {
-      return NextResponse.json(
-        { error: 'Settings not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Settings not found' }, { status: 404 });
     }
 
     return NextResponse.json(settings);
@@ -44,20 +37,16 @@ export async function GET() {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const prisma = getPrismaClient();
+    const db = await getDb();
     const updates: Partial<Omit<AuditSettings, 'id' | 'updated_at'>> = await request.json();
 
     // Validate input
     if (updates.enabled !== undefined && ![0, 1].includes(updates.enabled)) {
-      return NextResponse.json(
-        { error: 'enabled must be 0 or 1' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'enabled must be 0 or 1' }, { status: 400 });
     }
 
     if (updates.retentionDays !== undefined) {
-      if (typeof updates.retentionDays !== 'number' ||
-          (updates.retentionDays < -1 && updates.retentionDays !== -1)) {
+      if (typeof updates.retentionDays !== 'number' || (updates.retentionDays < -1 && updates.retentionDays !== -1)) {
         return NextResponse.json(
           { error: 'retention_days must be -1 (forever) or a positive number' },
           { status: 400 }
@@ -65,7 +54,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    const updated = await updateSettings(prisma, updates);
+    const updated = await updateSettings(db, updates);
 
     return NextResponse.json({
       success: true,
@@ -86,8 +75,8 @@ export async function PUT(request: NextRequest) {
  */
 export async function HEAD() {
   try {
-    const prisma = getPrismaClient();
-    const enabled = await isEnabled(prisma);
+    const db = await getDb();
+    const enabled = await isEnabled(db);
 
     return new NextResponse(null, {
       status: enabled ? 200 : 204,

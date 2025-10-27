@@ -10,8 +10,9 @@ const nextConfig: NextConfig = {
   // Enable React Compiler (stable in Next.js 16)
   reactCompiler: true,
 
-  // Enable Cache Components (new caching model)
-  cacheComponents: true,
+  // Disable Cache Components temporarily due to D1 database compatibility issues
+  // TODO: Re-enable after resolving prerendering conflicts with D1 queries
+  cacheComponents: false,
 
   // Enable Turbopack file system caching (beta)
   experimental: {

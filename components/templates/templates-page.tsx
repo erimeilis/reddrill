@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Pagination } from '@/components/ui/pagination';
-import { IconRefresh, IconEye, IconLanguage, IconPlus, IconTrash, IconCopy } from '@tabler/icons-react';
+import { IconRefresh, IconEye, IconLanguage, IconPlus, IconTrash, IconCopy, IconAlertCircle, IconX } from '@tabler/icons-react';
 import { MandrillTemplate } from '@/lib/api/mandrill';
 import { TemplateDetail } from '@/components/templates/template-detail';
 import mandrillClient from '@/lib/api/mandrill';
@@ -28,6 +28,7 @@ import { importTemplates } from '@/lib/utils/template-import';
 import type { TemplateExportData } from '@/lib/utils/template-export';
 import { countPlaceholders } from '@/lib/utils/placeholder-parser';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 // Helper component for table rows with scroll functionality
 function TableRowWithRef({
@@ -96,9 +97,21 @@ export function TemplatesPage() {
   // Dialog state
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; template: MandrillTemplate | null }>({ open: false, template: null });
   const [cloneDialog, setCloneDialog] = useState<{ open: boolean; template: MandrillTemplate | null }>({ open: false, template: null });
+  const [operationError, setOperationError] = useState<string | null>(null);
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
 
   // Fetch templates with SWR caching
   const { templates, loading, error, refresh } = useTemplates();
+
+  // Check if deletion is complete - template is gone from the list
+  const isDeleting = deletingSlug !== null && templates.some(t => t.slug === deletingSlug);
+
+  // Clear deletingSlug once template is gone from the list
+  useEffect(() => {
+    if (deletingSlug && !templates.some(t => t.slug === deletingSlug)) {
+      setDeletingSlug(null);
+    }
+  }, [deletingSlug, templates]);
 
   // Get available locales from templates
   const availableLocales = Array.from(
@@ -314,6 +327,24 @@ export function TemplatesPage() {
         )}
       </div>
 
+      {/* Operation Error Alert */}
+      {operationError && (
+        <Alert variant="destructive" className="mb-4">
+          <IconAlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{operationError}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={() => setOperationError(null)}
+            >
+              <IconX className="h-4 w-4" />
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {viewMode === 'tree' ? (
         <TemplateTreeView
           templates={filteredTemplates}
@@ -344,6 +375,7 @@ export function TemplatesPage() {
           selectedSlug={selectedSlug}
           onClearSelection={() => router.push('/templates')}
           loading={loading}
+          operationInProgress={isDeleting}
         />
       ) : (
         <Card className="shadow-sm">
@@ -591,16 +623,25 @@ export function TemplatesPage() {
         onConfirm={async () => {
           if (!deleteDialog.template) return;
 
+          const slug = deleteDialog.template.slug;
+          setDeletingSlug(slug);
+          setDeleteDialog({ open: false, template: null });
+
           try {
             await deleteTemplateApi(deleteDialog.template.name);
 
+            // Force immediate refresh to update the tree
+            await refresh();
+
             // Always clear selection after deletion (tree collapses anyway)
             router.push('/templates');
+
+            // Loading overlay will auto-hide when template disappears from list
           } catch (error) {
             console.error('Error deleting template:', error);
-            alert('Failed to delete template');
-          } finally {
-            setDeleteDialog({ open: false, template: null });
+            setOperationError('Failed to delete template');
+            // Clear loading on error
+            setDeletingSlug(null);
           }
         }}
       />
@@ -633,7 +674,7 @@ export function TemplatesPage() {
             router.push(`/templates/${encodeURIComponent(createdTemplate.slug || newName)}`);
           } catch (error) {
             console.error('Error cloning template:', error);
-            alert('Failed to clone template');
+            setOperationError('Failed to clone template');
           } finally {
             setCloneDialog({ open: false, template: null });
           }

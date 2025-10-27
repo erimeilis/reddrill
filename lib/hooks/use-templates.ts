@@ -4,6 +4,11 @@ import mandrillClient, { type MandrillTemplate, type MandrillTemplateInfo } from
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
 import type { AuditLogEntry } from '@/lib/types/audit';
 
+// Helper to get API key for audit logging
+function getApiKeyForAudit(): string | null {
+  return useMandrillStore.getState().apiKey;
+}
+
 // Fetcher function that uses mandrillClient directly (client-side only!)
 const fetcher = async () => {
   if (!mandrillClient.isInitialized()) {
@@ -101,17 +106,23 @@ export async function createTemplate(
 
   // Log audit trail
   try {
-    await fetch('/api/audit/log', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        operationType: 'create',
-        templateName: name,
-        templateSlug: newTemplate.slug,
-        stateAfter: newTemplate,
-        operationStatus: 'success',
-      } as AuditLogEntry),
-    });
+    const apiKey = getApiKeyForAudit();
+    if (apiKey) {
+      await fetch('/api/audit/log', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': apiKey,
+        },
+        body: JSON.stringify({
+          operationType: 'create',
+          templateName: name,
+          templateSlug: newTemplate.slug,
+          stateAfter: newTemplate,
+          operationStatus: 'success',
+        } as AuditLogEntry),
+      });
+    }
   } catch (error) {
     console.error('Failed to log audit trail:', error);
   }
@@ -201,19 +212,25 @@ export async function updateTemplate(
         changes.push({ field: 'labels', oldValue: stateBefore.labels, newValue: result.labels });
       }
 
-      await fetch('/api/audit/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operationType: 'update',
-          templateName: result.name,
-          templateSlug: result.slug,
-          stateBefore,
-          stateAfter: result,
-          changesSummary: changes.length > 0 ? changes : null,
-          operationStatus: 'success',
-        } as AuditLogEntry),
-      });
+      const apiKey = getApiKeyForAudit();
+      if (apiKey) {
+        await fetch('/api/audit/log', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify({
+            operationType: 'update',
+            templateName: result.name,
+            templateSlug: result.slug,
+            stateBefore,
+            stateAfter: result,
+            changesSummary: changes.length > 0 ? changes : null,
+            operationStatus: 'success',
+          } as AuditLogEntry),
+        });
+      }
     } catch (error) {
       console.error('Failed to log audit trail:', error);
     }
@@ -245,17 +262,23 @@ export async function deleteTemplate(slug: string) {
   // Log audit trail
   if (stateBefore) {
     try {
-      await fetch('/api/audit/log', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          operationType: 'delete',
-          templateName: stateBefore.name,
-          templateSlug: stateBefore.slug,
-          stateBefore,
-          operationStatus: 'success',
-        } as AuditLogEntry),
-      });
+      const apiKey = getApiKeyForAudit();
+      if (apiKey) {
+        await fetch('/api/audit/log', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-API-Key': apiKey,
+          },
+          body: JSON.stringify({
+            operationType: 'delete',
+            templateName: stateBefore.name,
+            templateSlug: stateBefore.slug,
+            stateBefore,
+            operationStatus: 'success',
+          } as AuditLogEntry),
+        });
+      }
     } catch (error) {
       console.error('Failed to log audit trail:', error);
     }

@@ -4,36 +4,27 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPrismaClient } from '@/lib/db/audit-db';
+import { getDb } from '@/lib/db/client';
 import { getAuditLogById } from '@/lib/db/audit-db';
 
 /**
  * GET /api/audit/logs/:id
  * Get specific audit log by ID
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const logId = parseInt(id, 10);
 
     if (isNaN(logId)) {
-      return NextResponse.json(
-        { error: 'Invalid log ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid log ID' }, { status: 400 });
     }
 
-    const prisma = getPrismaClient();
-    const log = await getAuditLogById(prisma, logId);
+    const db = await getDb();
+    const log = await getAuditLogById(db, logId);
 
     if (!log) {
-      return NextResponse.json(
-        { error: 'Audit log not found' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'Audit log not found' }, { status: 404 });
     }
 
     return NextResponse.json({
