@@ -13,6 +13,7 @@ import mandrillClient from '@/lib/api/mandrill';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ActivityFiltersComponent, ActivityFilters } from './activity-filters';
+import { MessageDetailDialog } from './message-detail-dialog';
 
 export function ActivityPage() {
   // Require authentication - redirect to home if not logged in
@@ -373,6 +374,12 @@ export function ActivityPage() {
           )}
         </CardContent>
       </Card>
+
+      <MessageDetailDialog
+        isOpen={isDetailOpen}
+        onClose={() => setIsDetailOpen(false)}
+        message={selectedMessage}
+      />
     </div>
   );
 }
