@@ -97,10 +97,17 @@ export async function GET(request: NextRequest) {
       conditions.push(lte(auditLogs.createdAt, new Date(filter.dateTo)));
     }
 
-    const countQuery = db.select({ count: count() }).from(auditLogs);
-    const totalCountResult = await countQuery.where(and(...conditions)).get();
+    const countResult = await db
+      .select({ value: count() })
+      .from(auditLogs)
+      .where(and(...conditions))
+      .all();
 
-    const totalCount = totalCountResult?.count || 0;
+    const totalCount = countResult?.[0]?.value || 0;
+
+    console.log('[AUDIT API] Count query result:', countResult);
+    console.log('[AUDIT API] Total count:', totalCount);
+    console.log('[AUDIT API] Logs count:', logs.length);
 
     return NextResponse.json({
       success: true,
@@ -137,7 +144,7 @@ export async function POST(request: NextRequest) {
       success: true,
       query,
       logs,
-      count: logs.length,
+      totalCount: logs.length,
     });
   } catch (error) {
     console.error('Error searching audit logs:', error);

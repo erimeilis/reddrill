@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Pagination } from '@/components/ui/pagination';
-import { IconSearch, IconFilter, IconRefresh, IconFileExport, IconX } from '@tabler/icons-react';
+import { IconRefresh, IconFileExport, IconX, IconFileText } from '@tabler/icons-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import type { AuditLog, AuditLogFilter } from '@/lib/types/audit';
 import { formatDistanceToNow } from 'date-fns';
@@ -25,12 +24,11 @@ export function AuditLogsViewer() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<AuditLogFilter>({
-    limit: 50,
+    limit: 10,
     offset: 0,
     orderBy: 'createdAt',
     orderDir: 'DESC',
   });
-  const [showFilters, setShowFilters] = useState(false);
   const [selectedLogId, setSelectedLogId] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -97,7 +95,7 @@ export function AuditLogsViewer() {
 
       const data = await response.json();
       setLogs(data.logs || []);
-      setTotalCount(data.totalCount || data.logs?.length || 0);
+      setTotalCount(data.totalCount || data.count || data.logs?.length || 0);
     } catch (err) {
       console.error('Search failed:', err);
       setError(err instanceof Error ? err.message : 'Search failed');
@@ -108,7 +106,7 @@ export function AuditLogsViewer() {
 
   const clearFilters = () => {
     setFilter({
-      limit: 50,
+      limit: 10,
       offset: 0,
       orderBy: 'createdAt',
       orderDir: 'DESC',
@@ -162,150 +160,119 @@ export function AuditLogsViewer() {
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-6">
-      <div className="space-y-4">
-      {/* Header with Search */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle>Audit Logs</CardTitle>
-              <CardDescription>
-                View and search template operation history
-              </CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFilters(!showFilters)}
-              >
-                <IconFilter className="mr-2 h-4 w-4" />
-                {showFilters ? 'Hide' : 'Show'} Filters
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={loadLogs}
-                disabled={loading}
-              >
-                <IconRefresh className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
+      {/* Title and Controls Row */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:justify-between mb-6">
+        {/* Page Title */}
+        <h1 className="text-2xl font-bold whitespace-nowrap">Audit Logs</h1>
+
+        {/* Right side: Search + Filters + Refresh */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          {/* Search Input */}
+          <div className="relative w-full sm:w-80">
+            <Input
+              placeholder="Search logs (template name, operation, labels)..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleSearch();
+                }
+              }}
+              className="w-full pr-10"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Search Bar */}
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <Input
-                placeholder="Search logs (template name, operation, labels)..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    handleSearch();
-                  }
-                }}
-              />
-            </div>
-            <Button onClick={handleSearch} disabled={loading}>
-              <IconSearch className="mr-2 h-4 w-4" />
-              Search
+
+          {/* Operation Type Filter */}
+          <Select
+            value={filter.operationType || 'all'}
+            onValueChange={(value) =>
+              setFilter({ ...filter, operationType: value === 'all' ? undefined : value as any })
+            }
+          >
+            <SelectTrigger className="w-[140px]">
+              <SelectValue placeholder="All operations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All operations</SelectItem>
+              <SelectItem value="create">Create</SelectItem>
+              <SelectItem value="update">Update</SelectItem>
+              <SelectItem value="delete">Delete</SelectItem>
+              <SelectItem value="restore">Restore</SelectItem>
+              <SelectItem value="import">Import</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Status Filter */}
+          <Select
+            value={filter.status || 'all'}
+            onValueChange={(value) =>
+              setFilter({ ...filter, status: value === 'all' ? undefined : value as any })
+            }
+          >
+            <SelectTrigger className="w-[120px]">
+              <SelectValue placeholder="All status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All status</SelectItem>
+              <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="partial">Partial</SelectItem>
+              <SelectItem value="failure">Failure</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Clear Filters Button */}
+          {(searchQuery || filter.operationType || filter.status) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="h-10 whitespace-nowrap shrink-0"
+            >
+              <IconX size={14} className="mr-1" />
+              Clear filters
             </Button>
-            {(searchQuery || filter.operationType || filter.status) && (
-              <Button variant="outline" onClick={clearFilters}>
-                <IconX className="mr-2 h-4 w-4" />
-                Clear
-              </Button>
+          )}
+
+          {/* Refresh button */}
+          <Button
+            variant="icon"
+            size="icon"
+            onClick={loadLogs}
+            disabled={loading}
+            title="Refresh Logs"
+            className="shrink-0"
+          >
+            {loading ? (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <IconRefresh size={18} stroke={1.5} />
             )}
-          </div>
+          </Button>
+        </div>
+      </div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border rounded-lg bg-muted/50">
-              <div className="space-y-2">
-                <Label>Operation Type</Label>
-                <Select
-                  value={filter.operationType || 'all'}
-                  onValueChange={(value) =>
-                    setFilter({ ...filter, operationType: value === 'all' ? undefined : value as any })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Operations</SelectItem>
-                    <SelectItem value="create">Create</SelectItem>
-                    <SelectItem value="update">Update</SelectItem>
-                    <SelectItem value="delete">Delete</SelectItem>
-                    <SelectItem value="restore">Restore</SelectItem>
-                    <SelectItem value="import">Import</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+      {/* Error Display */}
+      {error && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={filter.status || 'all'}
-                  onValueChange={(value) =>
-                    setFilter({ ...filter, status: value === 'all' ? undefined : value as any })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="success">Success</SelectItem>
-                    <SelectItem value="partial">Partial</SelectItem>
-                    <SelectItem value="failure">Failure</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Results Per Page</Label>
-                <Select
-                  value={filter.limit?.toString() || '50'}
-                  onValueChange={(value) =>
-                    setFilter({ ...filter, limit: parseInt(value), offset: 0 })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="25">25</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                    <SelectItem value="200">200</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-
-          {/* Error Display */}
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          {/* Results Count */}
-          <div className="text-sm text-muted-foreground">
-            Showing {logs.length} log{logs.length !== 1 ? 's' : ''}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Logs Table */}
       <Card>
         <CardContent>
-          <div className="max-h-[calc(100vh-28rem)] overflow-y-auto overflow-x-auto">
+          <div
+            className="overflow-y-auto overflow-x-auto"
+            style={{ maxHeight: `${Math.min((filter.limit || 10) * 60 + 60, 800)}px` }}
+          >
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10 border-b">
                 <TableRow>
@@ -327,7 +294,7 @@ export function AuditLogsViewer() {
                 ) : (
                   logs.map((log) => (
                     <TableRow key={log.id} className="cursor-pointer hover:bg-muted/50">
-                      <TableCell className="font-mono text-xs">
+                      <TableCell className="font-mono">
                         {formatDistanceToNow(new Date(log.createdAt), { addSuffix: true })}
                       </TableCell>
                       <TableCell>
@@ -340,26 +307,22 @@ export function AuditLogsViewer() {
                       </TableCell>
                       <TableCell className="max-w-xs truncate">
                         {log.templateName}
-                        {log.templateSlug && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {log.templateSlug}
-                          </div>
-                        )}
                       </TableCell>
                       <TableCell>{getStatusBadge(log.operationStatus)}</TableCell>
-                      <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]">
+                      <TableCell className="text-muted-foreground truncate max-w-[150px]">
                         {log.userIdentifier || '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
-                          size="sm"
+                          size="icon-sm"
                           onClick={() => {
                             setSelectedLogId(log.id);
                             setModalOpen(true);
                           }}
+                          title="View Details"
                         >
-                          Details
+                          <IconFileText size={14} stroke={1.5} />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -368,20 +331,20 @@ export function AuditLogsViewer() {
               </TableBody>
             </Table>
           </div>
+
+          {totalCount > 0 && (
+            <Pagination
+              currentPage={Math.floor((filter.offset || 0) / (filter.limit || 10)) + 1}
+              totalPages={Math.ceil(totalCount / (filter.limit || 10))}
+              totalItems={totalCount}
+              itemsPerPage={filter.limit || 10}
+              onPageChange={(page) => setFilter({ ...filter, offset: (page - 1) * (filter.limit || 10) })}
+              onItemsPerPageChange={(itemsPerPage) => setFilter({ ...filter, limit: itemsPerPage, offset: 0 })}
+              itemName="logs"
+            />
+          )}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {logs.length > 0 && (
-        <Pagination
-          currentPage={Math.floor((filter.offset || 0) / (filter.limit || 50)) + 1}
-          totalPages={Math.ceil(totalCount / (filter.limit || 50))}
-          totalItems={totalCount}
-          itemsPerPage={filter.limit || 50}
-          onPageChange={(page) => setFilter({ ...filter, offset: (page - 1) * (filter.limit || 50) })}
-          itemName="logs"
-        />
-      )}
 
       {/* Audit Detail Modal */}
       <AuditDetailModal
@@ -393,7 +356,6 @@ export function AuditLogsViewer() {
           loadLogs();
         }}
       />
-      </div>
     </div>
   );
 }

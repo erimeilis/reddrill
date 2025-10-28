@@ -13,25 +13,35 @@ import mandrillClient from '@/lib/api/mandrill';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ActivityFiltersComponent, ActivityFilters } from './activity-filters';
-import { MessageDetailDialog } from './message-detail-dialog';
+import { useRouter, usePathname } from 'next/navigation';
 
 export function ActivityPage() {
   // Require authentication - redirect to home if not logged in
   useMandrillConnection(true);
+
+  const router = useRouter();
+  const pathname = usePathname();
 
   // Data state
   const [messages, setMessages] = useState<MandrillMessage[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Filter state
-  const [filters, setFilters] = useState<ActivityFilters>({
-    dateFrom: null,
-    dateTo: null,
-    tag: null,
-    sender: null,
-    status: null,
-    searchTerm: '',
+  // Filter state - default to last hour
+  const [filters, setFilters] = useState<ActivityFilters>(() => {
+    const now = new Date();
+    const hourAgo = new Date(now);
+    hourAgo.setHours(hourAgo.getHours() - 1);
+
+    return {
+      dateFrom: hourAgo.toISOString().split('T')[0],
+      dateTo: now.toISOString().split('T')[0],
+      tag: null,
+      sender: null,
+      status: null,
+      searchTerm: '',
+      datePreset: 'hour',
+    };
   });
 
   // Sorting state
@@ -40,11 +50,7 @@ export function ActivityPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(10);
-
-  // Dialog state
-  const [selectedMessage, setSelectedMessage] = useState<MandrillMessage | null>(null);
-  const [isDetailOpen, setIsDetailOpen] = useState<boolean>(false);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Fetch messages from API
   const fetchMessages = useCallback(async () => {
@@ -53,7 +59,7 @@ export function ActivityPage() {
     try {
       const result = await mandrillClient.searchMessages({
         query: '*', // Get all messages
-        limit: 100, // Max per call
+        limit: 1000, // Mandrill API max limit
       });
       setMessages(result.results);
     } catch (err) {
@@ -96,9 +102,32 @@ export function ActivityPage() {
     return messages.filter(message => {
       // Date range filter
       if (filters.dateFrom || filters.dateTo) {
-        const messageDate = new Date(message.ts * 1000);
-        if (filters.dateFrom && messageDate < new Date(filters.dateFrom)) return false;
-        if (filters.dateTo && messageDate > new Date(filters.dateTo)) return false;
+        // Special handling for "Last Hour" - compare actual timestamps
+        if (filters.datePreset === 'hour') {
+          const messageTimestamp = message.ts * 1000; // Convert to milliseconds
+          const now = Date.now();
+          const hourAgo = now - (60 * 60 * 1000); // 1 hour ago in ms
+
+          if (messageTimestamp < hourAgo || messageTimestamp > now) {
+            return false;
+          }
+        } else {
+          // For other presets (today, week), compare dates
+          const messageDate = new Date(message.ts * 1000);
+          messageDate.setHours(0, 0, 0, 0); // Normalize to start of day
+
+          if (filters.dateFrom) {
+            const fromDate = new Date(filters.dateFrom);
+            fromDate.setHours(0, 0, 0, 0);
+            if (messageDate < fromDate) return false;
+          }
+
+          if (filters.dateTo) {
+            const toDate = new Date(filters.dateTo);
+            toDate.setHours(23, 59, 59, 999); // End of day
+            if (messageDate > toDate) return false;
+          }
+        }
       }
 
       // Tag filter
@@ -210,47 +239,110 @@ export function ActivityPage() {
     return text.substring(0, maxLength) + '...';
   };
 
-  // Handle row click
+  // Handle row click - navigate to detail view
   const handleRowClick = (message: MandrillMessage) => {
-    setSelectedMessage(message);
-    setIsDetailOpen(true);
+    router.push(`/activity/${message._id}`);
   };
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-6">
       <div className="flex flex-col gap-4 mb-6">
-        <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="relative w-full sm:max-w-sm">
-            <Input
-              type="text"
-              placeholder="Search messages..."
-              value={filters.searchTerm}
-              onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
-              className="w-full pr-10"
-            />
-            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="11" cy="11" r="8"></circle>
-                <path d="m21 21-4.3-4.3"></path>
-              </svg>
+        {/* Top row: Title + Search + Date filters + Refresh */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:justify-between">
+          {/* Page Title */}
+          <h1 className="text-2xl font-bold whitespace-nowrap">Outbound Activity</h1>
+
+          {/* Right side: Search + Date filters + Refresh */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+            {/* Search bar */}
+            <div className="relative w-full sm:w-80">
+              <Input
+                type="text"
+                placeholder="Search by recipient or subject..."
+                value={filters.searchTerm}
+                onChange={(e) => setFilters({ ...filters, searchTerm: e.target.value })}
+                className="w-full pr-10"
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8"></circle>
+                  <path d="m21 21-4.3-4.3"></path>
+                </svg>
+              </div>
             </div>
+
+            {/* Date filter buttons */}
+            <div className="flex flex-wrap gap-2">
+            <Button
+              variant={filters.datePreset === 'hour' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                const hourAgo = new Date(now);
+                hourAgo.setHours(hourAgo.getHours() - 1);
+                setFilters({
+                  ...filters,
+                  dateFrom: hourAgo.toISOString().split('T')[0],
+                  dateTo: now.toISOString().split('T')[0],
+                  datePreset: 'hour',
+                });
+              }}
+            >
+              Last Hour
+            </Button>
+            <Button
+              variant={filters.datePreset === 'today' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                setFilters({
+                  ...filters,
+                  dateFrom: now.toISOString().split('T')[0],
+                  dateTo: now.toISOString().split('T')[0],
+                  datePreset: 'today',
+                });
+              }}
+            >
+              Today
+            </Button>
+            <Button
+              variant={filters.datePreset === 'week' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                const now = new Date();
+                const weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                setFilters({
+                  ...filters,
+                  dateFrom: weekAgo.toISOString().split('T')[0],
+                  dateTo: now.toISOString().split('T')[0],
+                  datePreset: 'week',
+                });
+              }}
+            >
+              Last Week
+            </Button>
           </div>
-          <Button
-            onClick={fetchMessages}
-            disabled={loading}
-            variant="icon"
-            size="icon"
-            title="Refresh Messages"
-          >
-            {loading ? (
-              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              <IconRefresh size={18} stroke={1.5} />
-            )}
-          </Button>
+
+            {/* Refresh button */}
+            <Button
+              onClick={fetchMessages}
+              disabled={loading}
+              variant="icon"
+              size="icon"
+              title="Refresh Messages"
+              className="shrink-0"
+            >
+              {loading ? (
+                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              ) : (
+                <IconRefresh size={18} stroke={1.5} />
+              )}
+            </Button>
+          </div>
         </div>
 
         <ActivityFiltersComponent
@@ -288,7 +380,10 @@ export function ActivityPage() {
             </div>
           ) : (
             <>
-              <div className="max-h-[calc(100vh-20rem)] overflow-y-auto overflow-x-auto">
+              <div
+                className="overflow-y-auto overflow-x-auto"
+                style={{ maxHeight: `${Math.min(itemsPerPage * 60 + 60, 800)}px` }}
+              >
                 <Table className="w-full">
                   <TableHeader className="sticky top-0 bg-background z-10 border-b">
                     <TableRow>
@@ -327,7 +422,7 @@ export function ActivityPage() {
                         className="cursor-pointer hover:bg-muted/50"
                         onClick={() => handleRowClick(message)}
                       >
-                        <TableCell className="text-sm">
+                        <TableCell>
                           {formatDate(message.ts)}
                         </TableCell>
                         <TableCell className="font-medium" title={message.email}>
@@ -368,18 +463,16 @@ export function ActivityPage() {
                 totalItems={sortedMessages.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
+                onItemsPerPageChange={(newItemsPerPage) => {
+                  setItemsPerPage(newItemsPerPage);
+                  setCurrentPage(1);
+                }}
                 itemName="messages"
               />
             </>
           )}
         </CardContent>
       </Card>
-
-      <MessageDetailDialog
-        isOpen={isDetailOpen}
-        onClose={() => setIsDetailOpen(false)}
-        message={selectedMessage}
-      />
     </div>
   );
 }

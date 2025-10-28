@@ -26,7 +26,7 @@ export function SendersPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(10);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Local data state
   const [senders, setSenders] = useState<MandrillSender[]>([]);
@@ -124,38 +124,46 @@ export function SendersPage() {
 
   return (
     <div className="container mx-auto px-4 py-4 sm:py-6">
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
-        <div className="relative w-full sm:max-w-sm">
-          <Input
-            type="text"
-            placeholder="Search senders..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pr-10"
-          />
-          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <path d="m21 21-4.3-4.3"></path>
-            </svg>
+      {/* Title and Controls Row */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:justify-between mb-6">
+        {/* Page Title */}
+        <h1 className="text-2xl font-bold whitespace-nowrap">Senders</h1>
+
+        {/* Right side: Search + Refresh */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+          <div className="relative w-full sm:w-80">
+            <Input
+              type="text"
+              placeholder="Search senders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pr-10"
+            />
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-muted-foreground">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+              </svg>
+            </div>
           </div>
+          <Button
+            onClick={fetchSenders}
+            disabled={loading}
+            variant="icon"
+            size="icon"
+            title="Refresh Senders"
+            className="shrink-0"
+          >
+            {loading ? (
+              <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <IconRefresh size={18} stroke={1.5} />
+            )}
+          </Button>
         </div>
-        <Button 
-          onClick={fetchSenders} 
-          disabled={loading} 
-          variant="icon"
-          size="icon"
-          title="Refresh Senders"
-        >
-          {loading ? (
-            <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-          ) : (
-            <IconRefresh size={18} stroke={1.5} />
-          )}
-        </Button>
       </div>
 
       <Card className="shadow-sm">
@@ -185,7 +193,10 @@ export function SendersPage() {
             </div>
           ) : (
             <>
-              <div className="max-h-[calc(100vh-20rem)] overflow-y-auto overflow-x-auto">
+              <div
+                className="overflow-y-auto overflow-x-auto"
+                style={{ maxHeight: `${Math.min(itemsPerPage * 60 + 60, 800)}px` }}
+              >
                 <Table className="w-full">
                 <TableHeader className="sticky top-0 bg-background z-10 border-b">
                   <TableRow>
@@ -268,11 +279,11 @@ export function SendersPage() {
                       <TableCell className="text-right">
                         <Button
                           variant="ghost"
-                          size="icon"
+                          size="icon-sm"
                           onClick={() => handleViewSenderDetails(sender.address)}
                           title="View Sender Details"
                         >
-                          <IconEye size={18} stroke={1.5} />
+                          <IconEye size={14} stroke={1.5} />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -287,6 +298,10 @@ export function SendersPage() {
                 totalItems={sortedSenders.length}
                 itemsPerPage={itemsPerPage}
                 onPageChange={setCurrentPage}
+                onItemsPerPageChange={(newItemsPerPage) => {
+                  setItemsPerPage(newItemsPerPage);
+                  setCurrentPage(1);
+                }}
                 itemName="senders"
               />
             </>

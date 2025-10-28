@@ -92,7 +92,7 @@ export function TemplatesPage() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [itemsPerPage] = useState<number>(10);
+  const [itemsPerPage, setItemsPerPage] = useState<number>(10);
 
   // Dialog state
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; template: MandrillTemplate | null }>({ open: false, template: null });
@@ -390,7 +390,10 @@ export function TemplatesPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="max-h-[calc(100vh-32rem)] overflow-y-auto overflow-x-auto">
+          <div
+            className="overflow-y-auto overflow-x-auto"
+            style={{ maxHeight: `${Math.min(itemsPerPage * 60 + 60, 800)}px` }}
+          >
             <Table>
               <TableHeader className="sticky top-0 bg-background z-10 border-b">
                 <TableRow>
@@ -418,6 +421,7 @@ export function TemplatesPage() {
                   >
                     Labels{renderSortIndicator('labels')}
                   </TableHead>
+                  <TableHead className="text-center w-20">Placeholders</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -444,18 +448,22 @@ export function TemplatesPage() {
                           <div className="h-6 bg-muted rounded animate-pulse w-20"></div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-center">
+                        <div className="h-6 bg-muted rounded animate-pulse w-8 mx-auto"></div>
+                      </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-                          <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
-                          <div className="h-8 w-8 bg-muted rounded animate-pulse"></div>
+                        <div className="flex justify-end gap-1">
+                          <div className="h-7 w-7 bg-muted rounded animate-pulse"></div>
+                          <div className="h-7 w-7 bg-muted rounded animate-pulse"></div>
+                          <div className="h-7 w-7 bg-muted rounded animate-pulse"></div>
+                          <div className="h-7 w-7 bg-muted rounded animate-pulse"></div>
                         </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : sortedTemplates.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell colSpan={7} className="text-center py-8">
                       {error ? (
                         <div className="text-destructive">
                           Error loading templates: {error}
@@ -479,17 +487,17 @@ export function TemplatesPage() {
                         isSelected={isSelected}
                         onClick={() => router.push(`/templates/${template.slug}`)}
                       >
-                        <TableCell className="font-medium !py-1" title={template.name}>
+                        <TableCell className="font-medium" title={template.name}>
                           {theme}
                         </TableCell>
-                        <TableCell className="text-center !py-1">
+                        <TableCell className="text-center">
                           <span className="text-lg" title={locale || 'No locale'}>
                             {flag}
                           </span>
                         </TableCell>
-                        <TableCell className="!py-1">{template.subject}</TableCell>
-                        <TableCell className="!py-1">{template.from_email}</TableCell>
-                        <TableCell className="!py-1">
+                        <TableCell>{template.subject}</TableCell>
+                        <TableCell>{template.from_email}</TableCell>
+                        <TableCell>
                           <div className="flex flex-wrap gap-1">
                             {template.labels.map((label) => (
                               <span
@@ -499,25 +507,23 @@ export function TemplatesPage() {
                                 {label}
                               </span>
                             ))}
-                            {(() => {
-                              const count = countPlaceholders(template);
-                              return count > 0 ? (
-                                <Badge
-                                  variant="outline"
-                                  className="text-xs"
-                                  title={`${count} placeholder${count !== 1 ? 's' : ''} detected`}
-                                >
-                                  {count} 🔀
-                                </Badge>
-                              ) : null;
-                            })()}
                           </div>
                         </TableCell>
-                      <TableCell className="text-right !py-1">
-                        <div className="flex justify-end gap-2">
+                        <TableCell className="text-center">
+                          {(() => {
+                            const count = countPlaceholders(template);
+                            return count > 0 ? (
+                              <span className="text-muted-foreground" title={`${count} placeholder${count !== 1 ? 's' : ''}`}>
+                                {count}
+                              </span>
+                            ) : null;
+                          })()}
+                        </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               setSelectedTemplate(template.slug);
@@ -525,11 +531,11 @@ export function TemplatesPage() {
                             }}
                             title="View HTML Preview"
                           >
-                            <IconEye size={18} stroke={1.5} />
+                            <IconEye size={14} stroke={1.5} />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-sm"
                             onClick={async (e) => {
                               e.stopPropagation();
                               // Load full template info for translation
@@ -539,29 +545,29 @@ export function TemplatesPage() {
                             }}
                             title="Translate Template"
                           >
-                            <IconLanguage size={18} stroke={1.5} />
+                            <IconLanguage size={14} stroke={1.5} />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteDialog({ open: true, template });
                             }}
                             title="Delete Template"
                           >
-                            <IconTrash size={18} stroke={1.5} />
+                            <IconTrash size={14} stroke={1.5} />
                           </Button>
                           <Button
                             variant="ghost"
-                            size="icon"
+                            size="icon-sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               setCloneDialog({ open: true, template });
                             }}
                             title="Clone Template"
                           >
-                            <IconCopy size={18} stroke={1.5} />
+                            <IconCopy size={14} stroke={1.5} />
                           </Button>
                         </div>
                         </TableCell>
@@ -579,6 +585,10 @@ export function TemplatesPage() {
             totalItems={sortedTemplates.length}
             itemsPerPage={itemsPerPage}
             onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newItemsPerPage) => {
+              setItemsPerPage(newItemsPerPage);
+              setCurrentPage(1);
+            }}
             itemName="templates"
           />
         </CardContent>

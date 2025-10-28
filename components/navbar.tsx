@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail, IconClipboardList } from '@tabler/icons-react';
+import { IconMenu2, IconX, IconLogout, IconTemplate, IconTags, IconMail, IconClipboardList, IconActivity } from '@tabler/icons-react';
 import { useMandrillStore } from '@/lib/store/useMandrillStore';
 import { useMandrillConnection } from '@/lib/hooks/useMandrillConnection';
 import { useAuditApi } from '@/lib/hooks/useAuditApi';
@@ -101,6 +101,7 @@ export function Navbar() {
   // Navigation items
   const allNavItems = [
     { href: '/templates', label: 'Templates', icon: <IconTemplate size={20} stroke={1.5} /> },
+    { href: '/activity', label: 'Activity', icon: <IconActivity size={20} stroke={1.5} /> },
     { href: '/tags', label: 'Tags', icon: <IconTags size={20} stroke={1.5} /> },
     { href: '/senders', label: 'Senders', icon: <IconMail size={20} stroke={1.5} /> },
     { href: '/audit', label: 'Audit Logs', icon: <IconClipboardList size={20} stroke={1.5} />, requiresAudit: true },
@@ -153,9 +154,9 @@ export function Navbar() {
                     key={item.href} 
                     href={createUrl(item.href)}
                     className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      pathname === item.href 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-accent hover:text-accent-foreground'
+                      pathname === item.href
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`}
                   >
                     <span className="mr-2">{item.icon}</span>
@@ -221,9 +222,9 @@ export function Navbar() {
                     key={item.href} 
                     href={createUrl(item.href)}
                     className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                      pathname === item.href 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'hover:bg-accent hover:text-accent-foreground'
+                      pathname === item.href
+                        ? 'text-primary'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent'
                     }`}
                     onClick={() => setIsMenuOpen(false)}
                   >

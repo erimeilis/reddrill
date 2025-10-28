@@ -43,6 +43,7 @@ type MandrillApiClient = {
       senders?: string[];
       limit?: number;
     }) => Promise<MandrillMessage[]>;
+    content: (params: { id: string }) => Promise<MandrillMessageContent>;
   };
 };
 
@@ -198,6 +199,39 @@ export interface MandrillMessageSearchParams {
 export interface MandrillMessageSearchResult {
   results: MandrillMessage[];
   total: number;
+}
+
+// Message content from messages.content API
+export interface MandrillMessageContent {
+  ts: number; // Unix timestamp
+  _id: string;
+  sender: string;
+  template?: string;
+  subject: string;
+  email: string;
+  tags: string[];
+  opens: number;
+  opens_detail: Array<{
+    ts: number;
+    ip: string;
+    location: string;
+    ua?: string;
+  }>;
+  clicks: number;
+  clicks_detail: Array<{
+    ts: number;
+    url: string;
+    ip?: string;
+  }>;
+  state: string;
+  metadata?: Record<string, any>;
+  smtp_events: Array<{
+    ts: number;
+    type: string;
+    diag: string;
+  }>;
+  html?: string; // HTML content of the message
+  text?: string; // Plain text content of the message
 }
 
 // Mandrill API client
@@ -439,6 +473,21 @@ class MandrillClient {
       };
     } catch (error) {
       console.error('Error searching messages:', error);
+      throw error;
+    }
+  }
+
+  // Get message content (HTML and text)
+  async getMessageContent(messageId: string): Promise<MandrillMessageContent> {
+    if (!this.isInitialized()) {
+      throw new Error('Mandrill client not initialized. Please set API key first.');
+    }
+
+    try {
+      const content = await this.client!.messages.content({ id: messageId });
+      return content;
+    } catch (error) {
+      console.error(`Error getting message content for ${messageId}:`, error);
       throw error;
     }
   }
