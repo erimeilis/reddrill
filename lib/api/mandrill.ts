@@ -34,6 +34,17 @@ type MandrillApiClient = {
     list: () => Promise<MandrillSender[]>;
     info: (params: { address: string }) => Promise<MandrillSenderInfo>;
   };
+  messages: {
+    search: (params: {
+      query?: string;
+      date_from?: string;
+      date_to?: string;
+      tags?: string[];
+      senders?: string[];
+      limit?: number;
+    }) => Promise<MandrillMessage[]>;
+    content: (params: { id: string }) => Promise<MandrillMessageContent>;
+  };
 };
 
 // Types for Mandrill API responses
@@ -144,6 +155,83 @@ export interface MandrillSenderStats {
   clicks: number;
   unique_opens: number;
   unique_clicks: number;
+}
+
+// Message types for messages.search API
+export interface MandrillMessage {
+  _id: string;
+  ts: number; // Unix timestamp (seconds)
+  sender: string;
+  email: string; // Recipient email
+  subject: string;
+  tags: string[];
+  state: 'sent' | 'bounced' | 'rejected' | 'deferred' | 'soft-bounced' | 'queued';
+  opens: number;
+  clicks: number;
+  opens_detail: Array<{
+    ts: number;
+    ip: string;
+    location: string;
+    ua?: string; // User agent
+  }>;
+  clicks_detail: Array<{
+    ts: number;
+    url: string;
+    ip?: string;
+  }>;
+  smtp_events: Array<{
+    ts: number;
+    type: string;
+    diag: string;
+  }>;
+  metadata?: Record<string, any>;
+}
+
+export interface MandrillMessageSearchParams {
+  query?: string; // Search term (default: '*')
+  date_from?: string; // Start date (YYYY-MM-DD)
+  date_to?: string; // End date (YYYY-MM-DD)
+  tags?: string[]; // Filter by tags
+  senders?: string[]; // Filter by senders
+  limit?: number; // Results per call (max 100)
+}
+
+export interface MandrillMessageSearchResult {
+  results: MandrillMessage[];
+  total: number;
+}
+
+// Message content from messages.content API
+export interface MandrillMessageContent {
+  ts: number; // Unix timestamp
+  _id: string;
+  sender: string;
+  template?: string;
+  subject: string;
+  email: string;
+  tags: string[];
+  opens: number;
+  opens_detail: Array<{
+    ts: number;
+    ip: string;
+    location: string;
+    ua?: string;
+  }>;
+  clicks: number;
+  clicks_detail: Array<{
+    ts: number;
+    url: string;
+    ip?: string;
+  }>;
+  state: string;
+  metadata?: Record<string, any>;
+  smtp_events: Array<{
+    ts: number;
+    type: string;
+    diag: string;
+  }>;
+  html?: string; // HTML content of the message
+  text?: string; // Plain text content of the message
 }
 
 // Mandrill API client
@@ -354,6 +442,52 @@ class MandrillClient {
       return await this.client!.senders.info({ address });
     } catch (error) {
       console.error(`Error getting sender info for ${address}:`, error);
+      throw error;
+    }
+  }
+
+  // Search messages
+  async searchMessages(params: MandrillMessageSearchParams = {}): Promise<MandrillMessageSearchResult> {
+    if (!this.isInitialized()) {
+      throw new Error('Mandrill client not initialized. Please set API key first.');
+    }
+
+    try {
+      // Build search parameters with defaults
+      const searchParams = {
+        query: params.query || '*',
+        date_from: params.date_from,
+        date_to: params.date_to,
+        tags: params.tags,
+        senders: params.senders,
+        limit: params.limit || 100,
+      };
+
+      // Call Mandrill API
+      const results = await this.client!.messages.search(searchParams);
+
+      // Return wrapped result
+      return {
+        results: results || [],
+        total: results?.length || 0,
+      };
+    } catch (error) {
+      console.error('Error searching messages:', error);
+      throw error;
+    }
+  }
+
+  // Get message content (HTML and text)
+  async getMessageContent(messageId: string): Promise<MandrillMessageContent> {
+    if (!this.isInitialized()) {
+      throw new Error('Mandrill client not initialized. Please set API key first.');
+    }
+
+    try {
+      const content = await this.client!.messages.content({ id: messageId });
+      return content;
+    } catch (error) {
+      console.error(`Error getting message content for ${messageId}:`, error);
       throw error;
     }
   }
