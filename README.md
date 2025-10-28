@@ -55,6 +55,15 @@
 - **Configurable Retention** - Auto-cleanup based on retention policies
 - **Export Capability** - Export audit logs for compliance and reporting
 
+### 📬 Outbound Activity (Fully Implemented ✅)
+- **Message Timeline** - Real-time view of all outbound email activity
+- **Advanced Filtering** - Filter by email, subject, tags, status, date range
+- **Message Details** - Inspect full message metadata, recipients, tags, headers
+- **Status Tracking** - Monitor delivery status (sent, queued, rejected, bounced, deferred)
+- **Performance Metrics** - Opens, clicks, timestamps for each message
+- **Pagination** - Efficient handling of large message volumes
+- **Search** - Full-text search across messages
+
 ### 🏷️ Tags (Under Development 🚧)
 - Analytics with reputation scores
 - Delete tags from UI
@@ -536,11 +545,13 @@ reddrill/
 │   ├── @entity/                  # Entity details parallel route
 │   │   ├── templates/[slug]/     # Template edit form
 │   │   │   └── test/             # Template testing page
+│   │   ├── activity/[id]/        # Message detail view
 │   │   ├── audit/default.tsx     # Clear @entity slot on audit page
 │   │   ├── tags/default.tsx      # Clear @entity slot on tags page
 │   │   └── senders/default.tsx   # Clear @entity slot on senders page
 │   ├── @structure/               # List views parallel route
 │   │   ├── templates/            # Template list (table/tree)
+│   │   ├── activity/             # Outbound activity list
 │   │   ├── tags/                 # Tags list
 │   │   ├── senders/              # Senders list
 │   │   └── audit/                # Audit logs list
