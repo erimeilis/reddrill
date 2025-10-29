@@ -53,6 +53,7 @@ export function TranslateTemplateDialog({
   const [saving, setSaving] = useState(false);
   const [isClosing, setIsClosing] = useState(false); // Prevent reopening during close
   const [translatedHtml, setTranslatedHtml] = useState<string | null>(null);
+  const [translatedSubject, setTranslatedSubject] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [originalLines, setOriginalLines] = useState<string[]>([]);
   const [translatedLines, setTranslatedLines] = useState<string[]>([]);
@@ -66,6 +67,7 @@ export function TranslateTemplateDialog({
       // Small delay before resetting to allow close animation
       const timer = setTimeout(() => {
         setTranslatedHtml(null);
+        setTranslatedSubject(null);
         setError(null);
         setOriginalLines([]);
         setTranslatedLines([]);
@@ -94,14 +96,17 @@ export function TranslateTemplateDialog({
         throw new Error('No translatable text found in template');
       }
 
-      // Step 2: Translate all text nodes in one batch request
+      // Step 2: Translate all text nodes + subject in one batch request
       const originalTexts = textNodes.map(node => node.originalText);
+
+      // Add subject to translation batch (always first item for easy extraction)
+      const textsToTranslate = [template.subject, ...originalTexts];
 
       const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          texts: originalTexts,
+          texts: textsToTranslate,
           sourceLang,
           targetLang,
           provider: provider.provider,
@@ -134,6 +139,10 @@ export function TranslateTemplateDialog({
 
       const { translatedTexts, validations } = await response.json();
 
+      // Extract translated subject (first item) and body texts (remaining items)
+      const translatedSubjectText = translatedTexts[0];
+      const translatedBodyTexts = translatedTexts.slice(1);
+
       // Accumulate validation results
       let overallValidation: PlaceholderValidation = {
         isValid: true,
@@ -159,12 +168,13 @@ export function TranslateTemplateDialog({
       }
 
       // Step 3: Reconstruct HTML by putting translated texts back into DOM tree
-      const reconstructedHtml = reconstructHTML(root, textNodes, translatedTexts);
+      const reconstructedHtml = reconstructHTML(root, textNodes, translatedBodyTexts);
       setTranslatedHtml(reconstructedHtml);
+      setTranslatedSubject(translatedSubjectText);
 
-      // For side-by-side comparison
-      setOriginalLines(originalTexts);
-      setTranslatedLines(translatedTexts);
+      // For side-by-side comparison (include subject as first line)
+      setOriginalLines([template.subject, ...originalTexts]);
+      setTranslatedLines([translatedSubjectText, ...translatedBodyTexts]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Translation failed');
     } finally {
@@ -173,7 +183,7 @@ export function TranslateTemplateDialog({
   };
 
   const handleSave = async () => {
-    if (!template || !translatedHtml || isClosing) return;
+    if (!template || !translatedHtml || !translatedSubject || isClosing) return;
 
     setSaving(true);
     setIsClosing(true);
@@ -191,7 +201,7 @@ export function TranslateTemplateDialog({
       const createdTemplate = await createTemplateApi(
         newName,
         translatedHtml, // code
-        template.subject, // subject - keep original (or translate separately)
+        translatedSubject, // subject - use translated subject with placeholders preserved
         template.from_email, // fromEmail
         template.from_name, // fromName
         template.text, // text version
@@ -318,10 +328,17 @@ export function TranslateTemplateDialog({
                   <div className="max-h-[500px] overflow-y-auto">
                     {originalLines.map((origLine, index) => {
                       const transLine = translatedLines[index] || '';
+                      const isSubject = index === 0;
                       return (
-                        <div key={index} className="grid grid-cols-2 border-t hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                          <div className="p-3 text-sm border-r break-words">{origLine}</div>
-                          <div className="p-3 text-sm break-words font-medium">{transLine}</div>
+                        <div key={index} className={`grid grid-cols-2 border-t hover:bg-gray-50 dark:hover:bg-gray-800/50 ${isSubject ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''}`}>
+                          <div className="p-3 text-sm border-r break-words">
+                            {isSubject && <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block mb-1">SUBJECT:</span>}
+                            {origLine}
+                          </div>
+                          <div className="p-3 text-sm break-words font-medium">
+                            {isSubject && <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 block mb-1">SUBJECT:</span>}
+                            {transLine}
+                          </div>
                         </div>
                       );
                     })}
