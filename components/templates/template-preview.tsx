@@ -30,7 +30,6 @@ interface TemplatePreviewProps {
 }
 
 export function TemplatePreview({ template, testData }: TemplatePreviewProps) {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop');
   const [darkMode, setDarkMode] = useState(false);
   const [rendered, setRendered] = useState<RenderedTemplate | null>(null);
@@ -71,24 +70,6 @@ export function TemplatePreview({ template, testData }: TemplatePreviewProps) {
       textContent,
     });
   }, [template, testData]);
-
-  useEffect(() => {
-    // Update iframe content when rendered changes
-    if (iframeRef.current && rendered) {
-      const iframeDoc = iframeRef.current.contentDocument;
-      if (iframeDoc) {
-        iframeDoc.open();
-        iframeDoc.write(rendered.htmlContent);
-        iframeDoc.close();
-
-        // Apply dark mode if enabled
-        if (darkMode) {
-          iframeDoc.body.style.backgroundColor = '#1a1a1a';
-          iframeDoc.body.style.color = '#e5e5e5';
-        }
-      }
-    }
-  }, [rendered, darkMode]);
 
   if (!rendered) {
     return (
@@ -166,8 +147,12 @@ export function TemplatePreview({ template, testData }: TemplatePreviewProps) {
               }}
             >
               <iframe
-                ref={iframeRef}
                 className="w-full h-full border-0"
+                srcDoc={
+                  darkMode
+                    ? `<body style="background-color: #1a1a1a; color: #e5e5e5; margin: 0;">${rendered.htmlContent}</body>`
+                    : rendered.htmlContent
+                }
                 title="Email Preview"
                 sandbox="allow-same-origin"
               />

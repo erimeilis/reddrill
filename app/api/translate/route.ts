@@ -17,94 +17,113 @@ import {
 
 export async function POST(request: NextRequest) {
   try {
-    const { text, sourceLang, targetLang, provider = 'cloudflare', apiKey, projectId, protectPlaceholdersFlag = true } = await request.json();
+    const { text, texts, sourceLang, targetLang, provider = 'cloudflare', apiKey, projectId, protectPlaceholdersFlag = true } = await request.json();
 
-    if (!text || !sourceLang || !targetLang) {
+    // Support both single text and batch texts
+    const inputTexts = texts || (text ? [text] : []);
+    const isBatch = Array.isArray(texts);
+
+    if (inputTexts.length === 0 || !sourceLang || !targetLang) {
       return NextResponse.json(
-        { error: 'Missing required fields: text, sourceLang, targetLang' },
+        { error: 'Missing required fields: text/texts, sourceLang, targetLang' },
         { status: 400 }
       );
     }
 
-    // Step 1: Protect placeholders before translation
-    const { protectedText, tokenMap } = protectPlaceholdersFlag
-      ? protectPlaceholders(text)
-      : { protectedText: text, tokenMap: new Map() };
+    // Process each text (batch translation)
+    const results = [];
 
-    // Step 2: Perform translation with protected text
-    let translatedText: string;
+    for (const inputText of inputTexts) {
+      // Step 1: Protect placeholders before translation
+      const { protectedText, tokenMap } = protectPlaceholdersFlag
+        ? protectPlaceholders(inputText)
+        : { protectedText: inputText, tokenMap: new Map() };
 
-    switch (provider) {
-      case 'cloudflare':
-        translatedText = await translateWithCloudflare(protectedText, sourceLang, targetLang, request);
-        break;
+      // Skip translation for text nodes that are ONLY placeholder tokens (e.g., just "<?ph0?>")
+      // This prevents AI from corrupting standalone placeholders
+      const isOnlyPlaceholder = /^(\s*<\?ph\d+\?>\s*)+$/.test(protectedText.trim());
 
-      case 'google':
-        if (!apiKey) {
-          return NextResponse.json(
-            { error: 'API key required for Google Cloud Translation' },
-            { status: 400 }
-          );
+      let translatedText: string;
+
+      if (isOnlyPlaceholder) {
+        // Don't translate - just keep the protected text as-is
+        translatedText = protectedText;
+      } else {
+        // Step 2: Perform translation with protected text
+        switch (provider) {
+          case 'cloudflare':
+            translatedText = await translateWithCloudflare(protectedText, sourceLang, targetLang, request);
+            break;
+
+          case 'google':
+            if (!apiKey) {
+              return NextResponse.json(
+                { error: 'API key required for Google Cloud Translation' },
+                { status: 400 }
+              );
+            }
+            translatedText = await translateWithGoogle(protectedText, sourceLang, targetLang, apiKey);
+            break;
+
+          case 'azure':
+            if (!apiKey) {
+              return NextResponse.json(
+                { error: 'API key required for Azure Translator' },
+                { status: 400 }
+              );
+            }
+            translatedText = await translateWithAzure(protectedText, sourceLang, targetLang, apiKey);
+            break;
+
+          case 'crowdin':
+            if (!apiKey || !projectId) {
+              return NextResponse.json(
+                { error: 'API key and Project ID required for Crowdin' },
+                { status: 400 }
+              );
+            }
+            translatedText = await translateWithCrowdin(protectedText, sourceLang, targetLang, apiKey, projectId);
+            break;
+
+          default:
+            return NextResponse.json(
+              { error: `Unknown provider: ${provider}` },
+              { status: 400 }
+            );
         }
-        translatedText = await translateWithGoogle(protectedText, sourceLang, targetLang, apiKey);
-        break;
+      }
 
-      case 'azure':
-        if (!apiKey) {
-          return NextResponse.json(
-            { error: 'API key required for Azure Translator' },
-            { status: 400 }
-          );
-        }
-        translatedText = await translateWithAzure(protectedText, sourceLang, targetLang, apiKey);
-        break;
+      // Step 3: Restore placeholders after translation
+      const restoredText = protectPlaceholdersFlag
+        ? restorePlaceholders(translatedText, tokenMap)
+        : translatedText;
 
-      case 'crowdin':
-        if (!apiKey || !projectId) {
-          return NextResponse.json(
-            { error: 'API key and Project ID required for Crowdin' },
-            { status: 400 }
-          );
-        }
-        translatedText = await translateWithCrowdin(protectedText, sourceLang, targetLang, apiKey, projectId);
-        break;
+      // Step 4: Validate placeholders
+      const validation = protectPlaceholdersFlag
+        ? validatePlaceholders(inputText, restoredText)
+        : { isValid: true, warnings: [], missing: [], added: [], corrupted: [] };
 
-      default:
-        return NextResponse.json(
-          { error: `Unknown provider: ${provider}` },
-          { status: 400 }
-        );
+      results.push({
+        translatedText: restoredText,
+        validation
+      });
     }
 
-    // Step 3: Restore placeholders after translation
-    const restoredText = protectPlaceholdersFlag
-      ? restorePlaceholders(translatedText, tokenMap)
-      : translatedText;
-
-    // Step 4: Validate placeholders
-    const validation = protectPlaceholdersFlag
-      ? validatePlaceholders(text, restoredText)
-      : { isValid: true, warnings: [], missing: [], added: [], corrupted: [] };
-
-    // Debug logging
-    console.log('=== Translation Debug ===');
-    console.log('Original:', text);
-    console.log('Protected:', protectedText);
-    console.log('Translated:', translatedText);
-    console.log('Restored:', restoredText);
-    console.log('TokenMap:', Array.from(tokenMap.entries()));
-
-    return NextResponse.json({
-      translatedText: restoredText,
-      validation,
-      placeholderProtection: protectPlaceholdersFlag,
-      debug: {
-        original: text,
-        protected: protectedText,
-        translated: translatedText,
-        restored: restoredText,
-      }
-    });
+    // Return single result for backward compatibility, or array for batch
+    if (isBatch) {
+      return NextResponse.json({
+        translatedTexts: results.map(r => r.translatedText),
+        validations: results.map(r => r.validation),
+        placeholderProtection: protectPlaceholdersFlag
+      });
+    } else {
+      // Single text mode (backward compatible)
+      return NextResponse.json({
+        translatedText: results[0].translatedText,
+        validation: results[0].validation,
+        placeholderProtection: protectPlaceholdersFlag
+      });
+    }
   } catch (error) {
     console.error('Translation error:', error);
     return NextResponse.json(
@@ -132,11 +151,21 @@ async function translateWithCloudflare(
   }
 
   // Use native binding directly
+  // Set max_length high enough to handle all content including markers
+  // The default is often 200 tokens which is too low for our marked-up text
+  // We need to account for: original text + XSTART/XEND markers + <?ph?> tokens
+  const maxLength = 2048;  // High limit to prevent truncation
+
   const response = await AI.run('@cf/meta/m2m100-1.2b', {
     text,
     source_lang: sourceLang,
-    target_lang: targetLang
+    target_lang: targetLang,
+    max_length: maxLength
   });
+
+  if (!response.translated_text) {
+    throw new Error('No translated text in response from Cloudflare AI');
+  }
 
   return response.translated_text;
 }

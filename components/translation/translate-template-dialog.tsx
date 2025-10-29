@@ -87,19 +87,21 @@ export function TranslateTemplateDialog({
       // Get primary provider (defaults to Cloudflare if none configured)
       const provider = await getPrimaryProvider();
 
-      // Step 1: Decompose HTML into segments (tags, text, placeholders)
-      const { segments, translatableText } = extractTranslatableText(template.code);
+      // Step 1: Parse HTML into DOM tree and extract text nodes
+      const { root, textNodes } = extractTranslatableText(template.code);
 
-      if (!translatableText) {
+      if (textNodes.length === 0) {
         throw new Error('No translatable text found in template');
       }
 
-      // Step 2: Translate ONLY the text segments (API will protect placeholders)
+      // Step 2: Translate all text nodes in one batch request
+      const originalTexts = textNodes.map(node => node.originalText);
+
       const response = await fetch('/api/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text: translatableText,
+          texts: originalTexts,
           sourceLang,
           targetLang,
           provider: provider.provider,
@@ -130,20 +132,39 @@ export function TranslateTemplateDialog({
         throw new Error(errorMessage);
       }
 
-      const { translatedText, validation: validationResult } = await response.json();
+      const { translatedTexts, validations } = await response.json();
 
-      // Store validation results
-      if (validationResult) {
-        setValidation(validationResult);
+      // Accumulate validation results
+      let overallValidation: PlaceholderValidation = {
+        isValid: true,
+        warnings: [],
+        missing: [],
+        added: [],
+        corrupted: []
+      };
+
+      for (const validationResult of validations) {
+        if (validationResult && !validationResult.isValid) {
+          overallValidation.isValid = false;
+          overallValidation.warnings.push(...validationResult.warnings);
+          overallValidation.missing.push(...validationResult.missing);
+          overallValidation.added.push(...validationResult.added);
+          overallValidation.corrupted.push(...validationResult.corrupted);
+        }
       }
 
-      // Step 3: Reconstruct HTML with translated text
-      const reconstructedHtml = reconstructHTML(segments, translatedText);
+      // Store overall validation results
+      if (!overallValidation.isValid) {
+        setValidation(overallValidation);
+      }
+
+      // Step 3: Reconstruct HTML by putting translated texts back into DOM tree
+      const reconstructedHtml = reconstructHTML(root, textNodes, translatedTexts);
       setTranslatedHtml(reconstructedHtml);
 
       // For side-by-side comparison
-      setOriginalLines([translatableText]);
-      setTranslatedLines([translatedText]);
+      setOriginalLines(originalTexts);
+      setTranslatedLines(translatedTexts);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Translation failed');
     } finally {

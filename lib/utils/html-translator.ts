@@ -1,144 +1,110 @@
 /**
  * HTML Translation Utilities
- * Extracts text from HTML while preserving tags and Mandrill placeholders (*|...|*)
+ * Uses proper DOM parsing to maintain HTML structure during translation
+ * Translates each text node individually to avoid marker overhead and truncation issues
  */
 
-interface TextSegment {
-  type: 'text' | 'tag' | 'placeholder';
-  content: string;
-  original: string;
+import { parse, HTMLElement, TextNode, Node } from 'node-html-parser';
+
+interface TextNodeInfo {
+  node: TextNode;
+  originalText: string;
 }
 
 /**
- * Extract translatable text from HTML
- * Preserves HTML tags and Mandrill placeholders
+ * Extract translatable text from HTML while preserving complete DOM structure
+ * Returns the parsed DOM and array of individual text nodes to translate
+ * No markers - each text node is translated separately for maximum compatibility
  */
 export function extractTranslatableText(html: string): {
-  segments: TextSegment[];
-  translatableText: string;
+  root: HTMLElement;
+  textNodes: TextNodeInfo[];
 } {
-  const segments: TextSegment[] = [];
-  const translatableParts: string[] = [];
+  // Parse HTML into DOM tree
+  const root = parse(html, {
+    comment: false,
+    blockTextElements: {
+      script: false,
+      noscript: false,
+      style: false,
+      pre: false,
+    }
+  });
 
-  // Regular expressions
-  const tagRegex = /<[^>]+>/g;
-  const placeholderRegex = /\*\|[^|]+\|\*/g;
+  const textNodes: TextNodeInfo[] = [];
 
-  const parts: Array<{ type: string; content: string; index: number }> = [];
+  /**
+   * Recursively walk DOM tree and collect text nodes
+   */
+  function walkNode(node: Node) {
+    if (node.nodeType === 3) {
+      // Text node
+      const textNode = node as TextNode;
+      const text = textNode.text;
 
-  // Find all tags
-  let tagMatch;
-  while ((tagMatch = tagRegex.exec(html)) !== null) {
-    parts.push({
-      type: 'tag',
-      content: tagMatch[0],
-      index: tagMatch.index
-    });
-  }
+      // Skip empty or whitespace-only text nodes
+      if (!text || !text.trim()) {
+        return;
+      }
 
-  // Find all placeholders
-  let placeholderMatch;
-  placeholderRegex.lastIndex = 0;
-  while ((placeholderMatch = placeholderRegex.exec(html)) !== null) {
-    parts.push({
-      type: 'placeholder',
-      content: placeholderMatch[0],
-      index: placeholderMatch.index
-    });
-  }
+      // Store text node info (no markers needed)
+      textNodes.push({
+        node: textNode,
+        originalText: text
+      });
+    } else if (node.nodeType === 1) {
+      // Element node - recurse into children
+      const element = node as HTMLElement;
 
-  // Sort by index
-  parts.sort((a, b) => a.index - b.index);
+      // Skip script and style elements
+      const tagName = element.tagName?.toLowerCase();
+      if (tagName === 'script' || tagName === 'style') {
+        return;
+      }
 
-  // Extract text between tags and placeholders
-  let currentIndex = 0;
-  for (const part of parts) {
-    // Extract text before this part
-    if (part.index > currentIndex) {
-      const textContent = html.substring(currentIndex, part.index);
-      // Only trim if adjacent to tag, not placeholder
-      const shouldTrim = part.type === 'tag';
-      const finalContent = shouldTrim ? textContent.trim() : textContent;
-
-      if (finalContent) {
-        segments.push({
-          type: 'text',
-          content: finalContent,
-          original: finalContent
-        });
-        translatableParts.push(finalContent);
+      // Process child nodes
+      for (const child of element.childNodes) {
+        walkNode(child);
       }
     }
-
-    // Add the segment
-    segments.push({
-      type: part.type as 'tag' | 'placeholder',
-      content: part.content,
-      original: part.content
-    });
-
-    // Include placeholders in translatable text (not tags)
-    if (part.type === 'placeholder') {
-      translatableParts.push(part.content);
-    }
-
-    currentIndex = part.index + part.content.length;
   }
 
-  // Get remaining text after last part
-  if (currentIndex < html.length) {
-    const textContent = html.substring(currentIndex);
-    const finalContent = textContent.trimEnd();
-
-    if (finalContent) {
-      segments.push({
-        type: 'text',
-        content: finalContent,
-        original: finalContent
-      });
-      translatableParts.push(finalContent);
-    }
-  }
+  // Walk the entire DOM tree
+  walkNode(root);
 
   return {
-    segments,
-    translatableText: translatableParts.join('')
+    root,
+    textNodes
   };
 }
 
 /**
- * Reconstruct HTML from segments with translated text
+ * Reconstruct HTML by putting translated text back into the DOM tree
+ * Simply updates each text node with its translated content
  */
 export function reconstructHTML(
-  segments: TextSegment[],
-  translatedText: string
+  root: HTMLElement,
+  textNodes: TextNodeInfo[],
+  translatedTexts: string[]
 ): string {
-  let result = '';
-  let textRemaining = translatedText;
+  // Update each text node with its corresponding translated text
+  for (let i = 0; i < textNodes.length; i++) {
+    const info = textNodes[i];
+    const translated = translatedTexts[i];
 
-  for (const segment of segments) {
-    if (segment.type === 'tag') {
-      // Add tags as-is
-      result += segment.original;
-    } else if (segment.type === 'placeholder') {
-      // Find placeholder in remaining text
-      const pos = textRemaining.indexOf(segment.original);
-      if (pos >= 0) {
-        // Add any translated text before the placeholder
-        result += textRemaining.substring(0, pos);
-        // Add the placeholder itself
-        result += segment.original;
-        // Continue after the placeholder
-        textRemaining = textRemaining.substring(pos + segment.original.length);
-      }
+    if (translated !== undefined) {
+      info.node.textContent = translated;
+    } else {
+      // Fallback: keep original if translation missing
+      console.warn(`No translation for text node ${i}`, {
+        originalText: info.originalText.substring(0, 50)
+      });
+      info.node.textContent = info.originalText;
     }
-    // Text segments are implicitly handled when we add text before placeholders
   }
 
-  // Add any remaining translated text
-  result += textRemaining;
-
-  return result;
+  // Serialize the modified DOM back to HTML
+  return root.toString();
 }
 
 /**
@@ -158,6 +124,6 @@ export function extractPlainText(html: string): string {
  * Count translatable characters (for API cost estimation)
  */
 export function countTranslatableChars(html: string): number {
-  const { translatableText } = extractTranslatableText(html);
-  return translatableText.length;
+  const { textNodes } = extractTranslatableText(html);
+  return textNodes.reduce((sum, node) => sum + node.originalText.length, 0);
 }

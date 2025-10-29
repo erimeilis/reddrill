@@ -305,7 +305,9 @@ export function validatePlaceholders(
 
 /**
  * Replace placeholders with protection tokens for translation
- * Preserves surrounding whitespace to prevent translation services from removing spaces
+ * Uses XML processing instruction format which is mostly preserved by AI translation
+ * Format: <?ph0?>, <?ph1?>, etc.
+ * Enhanced to handle placeholders adjacent to text without spaces (e.g., *|duration|*'s)
  */
 export function protectPlaceholders(text: string): {
   protectedText: string;
@@ -321,14 +323,28 @@ export function protectPlaceholders(text: string): {
   for (const [index, placeholder] of reversedPlaceholders.entries()) {
     const phId = placeholders.length - 1 - index;
 
-    // Use XML processing instruction format - translation services never touch these
-    // Format: <?ph0?> (standard XML PI that won't be translated or modified)
-    const token = `<?ph${phId}?>`;
+    // Use XML processing instruction format: <?ph0?>
+    // This is generally preserved by translation services
+    const baseToken = `<?ph${phId}?>`;
 
-    // Store the original placeholder
-    tokenMap.set(token, placeholder.raw);
+    // Check if placeholder is adjacent to non-whitespace characters
+    const charBefore = placeholder.startIndex > 0 ? text[placeholder.startIndex - 1] : '';
+    const charAfter = placeholder.endIndex < text.length ? text[placeholder.endIndex] : '';
 
-    // Replace the placeholder with the token
+    const hasSpaceBefore = !charBefore || /\s/.test(charBefore);
+    const hasSpaceAfter = !charAfter || /\s/.test(charAfter);
+
+    // Add spaces around token if adjacent to text (prevents token merging with words)
+    const token = `${hasSpaceBefore ? '' : ' '}${baseToken}${hasSpaceAfter ? '' : ' '}`;
+
+    // Store the original placeholder with context metadata
+    tokenMap.set(baseToken, JSON.stringify({
+      placeholder: placeholder.raw,
+      addedSpaceBefore: !hasSpaceBefore,
+      addedSpaceAfter: !hasSpaceAfter
+    }));
+
+    // Replace the placeholder with the token (with added spaces if needed)
     protectedText =
       protectedText.substring(0, placeholder.startIndex) +
       token +
@@ -340,7 +356,8 @@ export function protectPlaceholders(text: string): {
 
 /**
  * Restore placeholders from protection tokens after translation
- * Simple replacement since XML-style tags preserve spacing naturally
+ * Handles both correct format (<?ph0?>) and corrupted format (<?ph0?) where AI drops the closing >
+ * Removes any added spaces that were used to protect tokens during translation
  */
 export function restorePlaceholders(
   text: string,
@@ -348,9 +365,40 @@ export function restorePlaceholders(
 ): string {
   let restored = text;
 
-  for (const [token, original] of tokenMap.entries()) {
-    // Simple global replacement - spaces are preserved in the surrounding text
-    restored = restored.replaceAll(token, original);
+  for (const [baseToken, contextDataStr] of tokenMap.entries()) {
+    try {
+      // Parse the context metadata
+      const contextData = JSON.parse(contextDataStr);
+      const { placeholder, addedSpaceBefore, addedSpaceAfter } = contextData;
+
+      // Extract the ph number from baseToken (e.g., "<?ph7?>" -> "7")
+      const phMatch = baseToken.match(/<\?ph(\d+)\?>/);
+      if (!phMatch) continue;
+
+      const phNumber = phMatch[1];
+
+      // Build regex to match both correct and corrupted formats
+      // Matches: <?ph7?> OR <?ph7? (with optional spaces before/after)
+      const spaceBefore = addedSpaceBefore ? ' ?' : '';
+      const spaceAfter = addedSpaceAfter ? ' ?' : '';
+
+      // Pattern matches:
+      // - Optional space before
+      // - <?phN?> (correct format)
+      // - OR <?phN? (corrupted, missing closing >)
+      // - Optional space after
+      const pattern = new RegExp(
+        `${spaceBefore}<\\?ph${phNumber}\\?>?${spaceAfter}`,
+        'g'
+      );
+
+      // Replace with original placeholder (no added spaces)
+      restored = restored.replace(pattern, placeholder);
+
+    } catch (error) {
+      // Fallback for old format (backward compatibility)
+      restored = restored.replaceAll(baseToken, contextDataStr);
+    }
   }
 
   return restored;
