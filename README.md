@@ -549,11 +549,11 @@ reddrill/
 │   │   ├── audit/default.tsx     # Clear @entity slot on audit page
 │   │   ├── tags/default.tsx      # Clear @entity slot on tags page
 │   │   └── senders/default.tsx   # Clear @entity slot on senders page
-│   ├── @structure/               # List views parallel route
-│   │   ├── templates/            # Template list (table/tree)
+│   ├── @structure/               # List views parallel route (all pages)
+│   │   ├── templates/            # Template list with table/tree views
 │   │   ├── activity/             # Outbound activity list
-│   │   ├── tags/                 # Tags list
-│   │   ├── senders/              # Senders list
+│   │   ├── tags/                 # Tags management page
+│   │   ├── senders/              # Senders overview page
 │   │   └── audit/                # Audit logs list
 │   ├── api/
 │   │   ├── audit/
@@ -563,6 +563,8 @@ reddrill/
 │   │   │   ├── stats/            # Audit statistics
 │   │   │   ├── cleanup/          # Cleanup old logs
 │   │   │   └── settings/         # Audit settings
+│   │   ├── mandrill/             # Mandrill API proxy (CORS resolver)
+│   │   │   └── route.ts          # All Mandrill operations centralized
 │   │   ├── templates/[slug]/
 │   │   │   ├── preview/          # Template preview API
 │   │   │   └── send-test/        # Send test email API
@@ -571,7 +573,13 @@ reddrill/
 │   └── layout.tsx                # Root layout with parallel routes
 │
 ├── components/
-│   ├── ui/                       # Reusable Radix UI components
+│   ├── ui/                       # Reusable UI components
+│   │   ├── button.tsx            # Radix button component
+│   │   ├── dialog.tsx            # Radix dialog component
+│   │   ├── input.tsx             # Radix input component
+│   │   ├── page-header.tsx       # Reusable page header component
+│   │   ├── search-with-actions.tsx # Search bar with action buttons
+│   │   └── ...                   # Other Radix UI components
 │   ├── audit/
 │   │   ├── audit-logs-viewer.tsx        # Audit logs table view
 │   │   ├── audit-detail-modal.tsx       # Detailed audit log modal
@@ -579,7 +587,8 @@ reddrill/
 │   ├── templates/
 │   │   ├── template-edit-form.tsx       # GrapesJS editor
 │   │   ├── template-tree-view.tsx       # Hierarchical tree view
-│   │   ├── templates-page.tsx           # Table view
+│   │   ├── template-detail.tsx          # Template detail dialog
+│   │   ├── template-filters.tsx         # Template filtering UI
 │   │   ├── tree-node.tsx                # Tree node component
 │   │   ├── placeholder-list.tsx         # Placeholder detection UI
 │   │   ├── template-preview.tsx         # Live preview with merge vars
@@ -590,30 +599,37 @@ reddrill/
 │   │   ├── translate-template-dialog.tsx  # Translation UI
 │   │   ├── translation-settings.tsx       # Provider configuration
 │   │   └── placeholder-validation.tsx     # Placeholder validation display
-│   ├── tags/                     # Tag components
-│   └── senders/                  # Sender components
+│   ├── tags/
+│   │   └── delete-tag-dialog.tsx         # Tag deletion confirmation
+│   └── senders/
+│       └── sender-detail-dialog.tsx      # Sender details modal
 │
 ├── lib/
 │   ├── api/
-│   │   └── mandrill.ts           # Mandrill API client
+│   │   └── mandrill.ts           # Mandrill API client (legacy)
 │   ├── db/
 │   │   ├── client.ts             # Drizzle D1 database client
 │   │   ├── schema.ts             # Drizzle database schema
 │   │   ├── audit-db.ts           # Drizzle/D1 audit operations
 │   │   ├── translation-settings-db.ts  # IndexedDB for settings
 │   │   └── test-scenarios-db.ts        # IndexedDB for test scenarios
-│   ├── hooks/                    # Custom React hooks
+│   ├── hooks/
+│   │   └── use-templates.ts      # Template operations hook
 │   ├── services/
 │   │   └── audit-service.ts      # Audit trail business logic
-│   ├── store/                    # Zustand state stores
+│   ├── store/
+│   │   ├── useMandrillStore.ts   # Mandrill API key management
+│   │   └── useSettingsStore.ts   # App settings store
 │   ├── types/
 │   │   └── audit.ts              # Audit trail types
-│   └── utils/
-│       ├── html-translator.ts    # HTML parsing for translation
-│       ├── placeholder-parser.ts # Placeholder detection & validation
-│       ├── template-parser.ts    # Parse {theme}_{locale} pattern
-│       ├── template-tree.ts      # Build tree from templates
-│       └── template-diff.ts      # Calculate template diffs
+│   ├── utils/
+│   │   ├── html-translator.ts    # HTML parsing for translation
+│   │   ├── placeholder-parser.ts # Placeholder detection & validation
+│   │   ├── template-parser.ts    # Parse {theme}_{locale} pattern
+│   │   ├── template-tree.ts      # Build tree from templates
+│   │   └── template-diff.ts      # Calculate template diffs
+│   └── constants/
+│       └── locales.ts            # Locale to flag mappings
 │
 ├── drizzle/
 │   ├── meta/                     # Drizzle migration metadata
@@ -623,6 +639,27 @@ reddrill/
 ├── wrangler.toml                 # Cloudflare Workers config
 └── next.config.ts                # Next.js configuration
 ```
+
+### Key Architecture Patterns
+
+**Parallel Routes:**
+- `@structure/` - Main list views for all pages
+- `@entity/` - Detail views that appear alongside lists
+
+**API Routes:**
+- `/api/mandrill/` - Centralized Mandrill proxy (resolves CORS issues)
+- `/api/audit/` - Audit trail operations
+- `/api/translate/` - Translation service
+
+**Component Organization:**
+- Page logic in `app/@structure/` routes
+- Reusable UI components in `components/ui/`
+- Feature-specific components in `components/{feature}/`
+
+**State Management:**
+- Zustand stores for global state (API keys, settings)
+- IndexedDB for persistent client-side data (test scenarios, translation settings)
+- D1/SQLite for server-side audit logs
 
 ---
 
