@@ -20,6 +20,8 @@
 - **Visual HTML Editor** - GrapesJS integration for WYSIWYG editing
 - **Multisite & Multilanguage Support** - Organize templates by site (labels) and locale
 - **Smart Naming Pattern** - `{theme}_{locale}` pattern for easy organization
+- **Locale Selection** - Choose your working locales in settings (60+ locales supported)
+- **Missing Translation Indicators** - See which locales are missing for each theme with inline red flags
 - **AI-Powered Translation** - Translate templates with space-preserving placeholder protection
 - **Placeholder Detection** - Supports Mailchimp (*|VAR|*), Handlebars ({{var}}), Global (*|GLOBAL:VAR|*), Conditionals
 - **Template Testing** - Live preview with merge vars, send test emails, save test scenarios
@@ -150,6 +152,7 @@ The tree view intelligently organizes templates using this pattern:
 ### Features:
 - **Smart Flattening** - Single-child nodes automatically flattened for cleaner hierarchy
 - **Flag Icons** - Locale displayed with country flags (🇬🇧, 🇪🇸, 🇩🇪, etc.)
+- **Missing Locales** - Red flags show missing translations inline: `Missing: 🇺🇦 ua, 🇹🇷 tr`
 - **Counters** - Shows number of templates at each level
 - **Sorting** - Default templates appear last for better organization
 - **Expand/Collapse All** - Quick navigation controls
@@ -580,6 +583,9 @@ reddrill/
 │   │   ├── page-header.tsx       # Reusable page header component
 │   │   ├── search-with-actions.tsx # Search bar with action buttons
 │   │   └── ...                   # Other Radix UI components
+│   ├── settings/
+│   │   ├── locale-selector.tsx   # Locale multiselect with search
+│   │   └── settings-dialog.tsx   # Main settings dialog
 │   ├── audit/
 │   │   ├── audit-logs-viewer.tsx        # Audit logs table view
 │   │   ├── audit-detail-modal.tsx       # Detailed audit log modal

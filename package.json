@@ -1,6 +1,6 @@
 {
   "name": "reddrill",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "private": false,
   "scripts": {
     "dev": "lsof -ti:3000 | xargs kill -9 2>/dev/null || true && next dev --turbopack",
