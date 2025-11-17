@@ -18,6 +18,7 @@ export interface TreeNode {
   expanded?: boolean;
   count?: number;
   locale?: string; // Original locale code for flag display
+  missingLocales?: string[]; // For theme/label nodes: locales that don't have translations
 }
 
 /**
@@ -29,8 +30,12 @@ function isDefaultTemplate(name: string): boolean {
 
 /**
  * Build tree structure - Mode 1: Theme → Label → Locale
+ * @param selectedLocales - List of locales to show (including missing ones)
  */
-export function buildTreeByTheme(templates: MandrillTemplate[]): TreeNode[] {
+export function buildTreeByTheme(
+  templates: MandrillTemplate[],
+  selectedLocales?: string[]
+): TreeNode[] {
   const tree: Map<string, TreeNode> = new Map();
 
   templates.forEach(template => {
@@ -85,6 +90,26 @@ export function buildTreeByTheme(templates: MandrillTemplate[]): TreeNode[] {
     });
   });
 
+  // Calculate missing locales for each label node if selectedLocales is provided
+  if (selectedLocales && selectedLocales.length > 0) {
+    tree.forEach(themeNode => {
+      themeNode.children?.forEach(labelNode => {
+        if (labelNode.type === 'label') {
+          // Get existing locales for this label
+          const existingLocales = new Set(
+            labelNode.children?.map(n => n.locale || n.displayName) || []
+          );
+
+          // Calculate missing locales
+          const missing = selectedLocales.filter(locale => !existingLocales.has(locale));
+          if (missing.length > 0) {
+            labelNode.missingLocales = missing;
+          }
+        }
+      });
+    });
+  }
+
   // Sort BEFORE flattening: themes with labels first, then default, then others
   const sortedThemes = Array.from(tree.values()).sort((a, b) => {
     const aIsDefault = isDefaultTemplate(a.displayName);
@@ -125,8 +150,12 @@ export function buildTreeByTheme(templates: MandrillTemplate[]): TreeNode[] {
 
 /**
  * Build tree structure - Mode 2: Label → Theme → Locale
+ * @param selectedLocales - List of locales to show (including missing ones)
  */
-export function buildTreeByLabel(templates: MandrillTemplate[]): TreeNode[] {
+export function buildTreeByLabel(
+  templates: MandrillTemplate[],
+  selectedLocales?: string[]
+): TreeNode[] {
   const tree: Map<string, TreeNode> = new Map();
 
   templates.forEach(template => {
@@ -181,6 +210,26 @@ export function buildTreeByLabel(templates: MandrillTemplate[]): TreeNode[] {
     });
   });
 
+  // Calculate missing locales for each theme node if selectedLocales is provided
+  if (selectedLocales && selectedLocales.length > 0) {
+    tree.forEach(labelNode => {
+      labelNode.children?.forEach(themeNode => {
+        if (themeNode.type === 'theme') {
+          // Get existing locales for this theme
+          const existingLocales = new Set(
+            themeNode.children?.map(n => n.locale || n.displayName) || []
+          );
+
+          // Calculate missing locales
+          const missing = selectedLocales.filter(locale => !existingLocales.has(locale));
+          if (missing.length > 0) {
+            themeNode.missingLocales = missing;
+          }
+        }
+      });
+    });
+  }
+
   // Sort BEFORE flattening: labels with themes first, then default, then unlabeled
   const sortedLabels = Array.from(tree.values()).sort((a, b) => {
     const aIsDefault = isDefaultTemplate(a.displayName);
@@ -229,14 +278,16 @@ export function buildTreeByLabel(templates: MandrillTemplate[]): TreeNode[] {
 
 /**
  * Build template tree with specified mode
+ * @param selectedLocales - List of locales to show (including missing ones)
  */
 export function buildTemplateTree(
   templates: MandrillTemplate[],
-  mode: TreeViewMode
+  mode: TreeViewMode,
+  selectedLocales?: string[]
 ): TreeNode[] {
   return mode === 'theme-label-locale'
-    ? buildTreeByTheme(templates)
-    : buildTreeByLabel(templates);
+    ? buildTreeByTheme(templates, selectedLocales)
+    : buildTreeByLabel(templates, selectedLocales);
 }
 
 /**

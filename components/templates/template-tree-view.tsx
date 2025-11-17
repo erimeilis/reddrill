@@ -75,16 +75,16 @@ export function TemplateTreeView({
 }: TemplateTreeViewProps) {
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Get persisted tree expansions from Zustand store
-  const { treeExpansions, setTreeExpansions } = useSettingsStore();
+  // Get persisted tree expansions and selected locales from Zustand store
+  const { treeExpansions, setTreeExpansions, selectedLocales } = useSettingsStore();
 
   // Convert Record to Map for internal use
   const userExpansions = useMemo(() => new Map(Object.entries(treeExpansions)), [treeExpansions]);
 
   // Step 1: Build base tree structure (memoized)
   const baseTree = useMemo(() => {
-    return buildTemplateTree(templates, treeMode);
-  }, [templates, treeMode]); // Rebuild when templates or mode changes
+    return buildTemplateTree(templates, treeMode, selectedLocales);
+  }, [templates, treeMode, selectedLocales]); // Rebuild when templates, mode, or selected locales change
 
   // Step 2: Apply automatic expansion for selected slug (pure derived state)
   const treeWithSelection = useMemo(() => {

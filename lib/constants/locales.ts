@@ -4,6 +4,89 @@
  */
 
 /**
+ * Supported locale interface
+ */
+export interface SupportedLocale {
+  code: string;
+  name: string;
+  nativeName?: string;
+}
+
+/**
+ * Comprehensive list of supported locales
+ * Organized by popularity and region
+ */
+export const SUPPORTED_LOCALES: SupportedLocale[] = [
+  // Major European Languages
+  { code: 'en', name: 'English', nativeName: 'English' },
+  { code: 'es', name: 'Spanish', nativeName: 'Español' },
+  { code: 'fr', name: 'French', nativeName: 'Français' },
+  { code: 'de', name: 'German', nativeName: 'Deutsch' },
+  { code: 'it', name: 'Italian', nativeName: 'Italiano' },
+  { code: 'pt', name: 'Portuguese', nativeName: 'Português' },
+  { code: 'nl', name: 'Dutch', nativeName: 'Nederlands' },
+  { code: 'pl', name: 'Polish', nativeName: 'Polski' },
+  { code: 'ru', name: 'Russian', nativeName: 'Русский' },
+
+  // Nordic Languages
+  { code: 'sv', name: 'Swedish', nativeName: 'Svenska' },
+  { code: 'da', name: 'Danish', nativeName: 'Dansk' },
+  { code: 'fi', name: 'Finnish', nativeName: 'Suomi' },
+  { code: 'no', name: 'Norwegian', nativeName: 'Norsk' },
+
+  // Eastern European
+  { code: 'cs', name: 'Czech', nativeName: 'Čeština' },
+  { code: 'sk', name: 'Slovak', nativeName: 'Slovenčina' },
+  { code: 'uk', name: 'Ukrainian', nativeName: 'Українська' },
+  { code: 'ro', name: 'Romanian', nativeName: 'Română' },
+  { code: 'hu', name: 'Hungarian', nativeName: 'Magyar' },
+  { code: 'bg', name: 'Bulgarian', nativeName: 'Български' },
+  { code: 'hr', name: 'Croatian', nativeName: 'Hrvatski' },
+  { code: 'sr', name: 'Serbian', nativeName: 'Српски' },
+  { code: 'sl', name: 'Slovenian', nativeName: 'Slovenščina' },
+  { code: 'et', name: 'Estonian', nativeName: 'Eesti' },
+  { code: 'lv', name: 'Latvian', nativeName: 'Latviešu' },
+  { code: 'lt', name: 'Lithuanian', nativeName: 'Lietuvių' },
+  { code: 'be', name: 'Belarusian', nativeName: 'Беларуская' },
+
+  // Asian Languages
+  { code: 'zh', name: 'Chinese', nativeName: '中文' },
+  { code: 'ja', name: 'Japanese', nativeName: '日本語' },
+  { code: 'ko', name: 'Korean', nativeName: '한국어' },
+  { code: 'hi', name: 'Hindi', nativeName: 'हिन्दी' },
+  { code: 'th', name: 'Thai', nativeName: 'ไทย' },
+  { code: 'vi', name: 'Vietnamese', nativeName: 'Tiếng Việt' },
+  { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia' },
+  { code: 'ms', name: 'Malay', nativeName: 'Bahasa Melayu' },
+  { code: 'tl', name: 'Tagalog', nativeName: 'Tagalog' },
+  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+
+  // Middle Eastern & South Asian
+  { code: 'ar', name: 'Arabic', nativeName: 'العربية' },
+  { code: 'he', name: 'Hebrew', nativeName: 'עברית' },
+  { code: 'fa', name: 'Persian', nativeName: 'فارسی' },
+  { code: 'tr', name: 'Turkish', nativeName: 'Türkçe' },
+  { code: 'ur', name: 'Urdu', nativeName: 'اردو' },
+
+  // Other European
+  { code: 'el', name: 'Greek', nativeName: 'Ελληνικά' },
+  { code: 'ca', name: 'Catalan', nativeName: 'Català' },
+  { code: 'eu', name: 'Basque', nativeName: 'Euskara' },
+  { code: 'gl', name: 'Galician', nativeName: 'Galego' },
+  { code: 'sq', name: 'Albanian', nativeName: 'Shqip' },
+  { code: 'hy', name: 'Armenian', nativeName: 'Հայերեն' },
+  { code: 'ka', name: 'Georgian', nativeName: 'ქართული' },
+  { code: 'kk', name: 'Kazakh', nativeName: 'Қазақ' },
+  { code: 'mk', name: 'Macedonian', nativeName: 'Македонски' },
+  { code: 'mt', name: 'Maltese', nativeName: 'Malti' },
+  { code: 'is', name: 'Icelandic', nativeName: 'Íslenska' },
+  { code: 'cy', name: 'Welsh', nativeName: 'Cymraeg' },
+  { code: 'ga', name: 'Irish', nativeName: 'Gaeilge' },
+  { code: 'af', name: 'Afrikaans', nativeName: 'Afrikaans' },
+  { code: 'sw', name: 'Swahili', nativeName: 'Kiswahili' },
+];
+
+/**
  * Special locale mappings for non-standard cases
  * Only include exceptions where locale code != country code
  */

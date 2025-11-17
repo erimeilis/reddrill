@@ -116,7 +116,23 @@ export function TreeNode({ node, depth, onToggle, onLocaleClick, onTranslate, on
         {flag && <span className="text-lg">{flag}</span>}
 
         {/* Node name */}
-        <span className="text-sm font-medium flex-1">{node.displayName}</span>
+        <span className="text-sm font-medium flex-1">
+          {node.displayName}
+        </span>
+
+        {/* Missing locales indicator (for theme/label nodes) */}
+        {node.missingLocales && node.missingLocales.length > 0 && (
+          <span className="text-xs text-destructive italic flex items-center gap-1">
+            Missing:
+            {node.missingLocales.map((locale, idx) => (
+              <span key={locale} className="inline-flex items-center gap-0.5">
+                {idx > 0 && ','}
+                <span className="text-base">{getLocaleFlag(locale)}</span>
+                {locale}
+              </span>
+            ))}
+          </span>
+        )}
 
         {/* Count badge with better contrast */}
         {node.count !== undefined && node.count > 0 && (

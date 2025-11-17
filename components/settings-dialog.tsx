@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { IconSettings } from '@tabler/icons-react';
 import { TranslationSettings } from '@/components/translation/translation-settings';
 import { AuditSettingsComponent } from '@/components/audit/audit-settings';
+import { LocaleSelector } from '@/components/settings/locale-selector';
 
 export function SettingsDialog() {
   const [open, setOpen] = useState(false);
@@ -27,16 +28,20 @@ export function SettingsDialog() {
         <DialogHeader>
           <DialogTitle>Settings</DialogTitle>
           <DialogDescription>
-            Configure translation providers, audit trail, and other settings
+            Configure translation providers, locale preferences, audit trail, and other settings
           </DialogDescription>
         </DialogHeader>
         <Tabs defaultValue="translation" className="py-4">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="translation">Translation</TabsTrigger>
+            <TabsTrigger value="locales">Locales</TabsTrigger>
             <TabsTrigger value="audit">Audit Trail</TabsTrigger>
           </TabsList>
           <TabsContent value="translation" className="mt-4">
             <TranslationSettings />
+          </TabsContent>
+          <TabsContent value="locales" className="mt-4">
+            <LocaleSelector />
           </TabsContent>
           <TabsContent value="audit" className="mt-4">
             <AuditSettingsComponent />

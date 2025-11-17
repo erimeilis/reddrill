@@ -17,6 +17,9 @@ interface SettingsState {
   treeMode: TreeViewMode;
   treeExpansions: Record<string, boolean>; // Persisted tree expansion state
 
+  // Locale Preferences
+  selectedLocales: string[]; // ISO2 locale codes that user works with
+
   // Last used items (for quick access)
   lastUsedTemplates: string[]; // slugs
 
@@ -27,6 +30,8 @@ interface SettingsState {
   setViewMode: (mode: 'table' | 'tree') => void;
   setTreeMode: (mode: TreeViewMode) => void;
   setTreeExpansions: (expansions: Record<string, boolean>) => void;
+  setSelectedLocales: (locales: string[]) => void;
+  toggleLocale: (locale: string) => void;
   addLastUsedTemplate: (slug: string) => void;
   clearLastUsedTemplates: () => void;
   setInitialized: () => void;
@@ -92,6 +97,7 @@ export const useSettingsStore = create<SettingsState>()(
       viewMode: 'tree',
       treeMode: 'label-theme-locale',
       treeExpansions: {},
+      selectedLocales: ['en', 'es', 'fr', 'de'], // Default to common locales
       lastUsedTemplates: [],
 
       // Set theme
@@ -126,6 +132,22 @@ export const useSettingsStore = create<SettingsState>()(
       // Set tree expansions
       setTreeExpansions: (expansions: Record<string, boolean>) => {
         set({ treeExpansions: expansions });
+      },
+
+      // Set selected locales
+      setSelectedLocales: (locales: string[]) => {
+        set({ selectedLocales: locales });
+      },
+
+      // Toggle a locale in/out of selection
+      toggleLocale: (locale: string) => {
+        set((state) => {
+          const isSelected = state.selectedLocales.includes(locale);
+          const updated = isSelected
+            ? state.selectedLocales.filter(l => l !== locale)
+            : [...state.selectedLocales, locale];
+          return { selectedLocales: updated };
+        });
       },
 
       // Add a template to last used (max 10, newest first)
@@ -164,6 +186,7 @@ export const useSettingsStore = create<SettingsState>()(
         viewMode: state.viewMode,
         treeMode: state.treeMode,
         treeExpansions: state.treeExpansions,
+        selectedLocales: state.selectedLocales,
         lastUsedTemplates: state.lastUsedTemplates
       })
     }
