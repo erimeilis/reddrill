@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button';
 import { IconLoader, IconTestPipe, IconMail } from '@tabler/icons-react';
 import { SendTestDialog } from '@/components/templates/send-test-dialog';
 import { TestScenarioSelector } from '@/components/templates/test-scenario-selector';
-import mandrillClient from '@/lib/api/mandrill';
 import type { MandrillTemplateInfo } from '@/lib/api/mandrill';
+import { useMandrillStore } from '@/lib/store/useMandrillStore';
 
 export default function TemplateTestPage() {
   const params = useParams();
@@ -29,11 +29,34 @@ export default function TemplateTestPage() {
     if (!slug) return;
 
     const loadTemplate = async () => {
+      const apiKey = useMandrillStore.getState().apiKey;
+
+      if (!apiKey) {
+        setError('Not connected to Mandrill');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        const templateInfo = await mandrillClient.getTemplateInfo(slug);
-        setTemplate(templateInfo);
+        const response = await fetch('/api/mandrill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey,
+            action: 'getTemplateInfo',
+            templateName: slug
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to load template');
+        }
+
+        setTemplate(result.template);
       } catch (err) {
         console.error('Error loading template:', err);
         setError(err instanceof Error ? err.message : 'Failed to load template');

@@ -123,7 +123,7 @@ export const useMandrillStore = create<MandrillState>()(
         });
       },
 
-      // Test connection with existing API key
+      // Test connection with existing API key (via API route)
       testConnection: async () => {
         const { apiKey } = get();
         if (!apiKey) {
@@ -134,14 +134,31 @@ export const useMandrillStore = create<MandrillState>()(
         set({ loading: true, error: null });
 
         try {
-          mandrillClient.initialize(apiKey);
-          await mandrillClient.listTemplates();
-
-          set({
-            isConnected: true,
-            loading: false,
-            error: null
+          // Test via API route to avoid CORS
+          const response = await fetch('/api/mandrill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey,
+              action: 'validate'
+            })
           });
+
+          const result = await response.json();
+
+          if (response.ok && result.success) {
+            set({
+              isConnected: true,
+              loading: false,
+              error: null
+            });
+          } else {
+            set({
+              isConnected: false,
+              loading: false,
+              error: null // Don't show error on background test
+            });
+          }
         } catch (error) {
           console.error('Connection test failed:', error);
           set({
@@ -152,7 +169,7 @@ export const useMandrillStore = create<MandrillState>()(
         }
       },
 
-      // Set API key and initialize Mandrill client
+      // Set API key and validate via API route (avoids CORS issues)
       setApiKey: async (apiKey: string) => {
         // Clear any existing state first
         set({
@@ -163,10 +180,24 @@ export const useMandrillStore = create<MandrillState>()(
         });
 
         try {
-          mandrillClient.initialize(apiKey);
+          // Call API route to validate key (server-side, no CORS issues)
+          const response = await fetch('/api/mandrill', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              apiKey,
+              action: 'validate'
+            })
+          });
 
-          // Test connection by making a simple API call
-          await mandrillClient.listTemplates();
+          const result = await response.json();
+
+          if (!response.ok || !result.success) {
+            throw new Error(result.error || 'Failed to validate API key');
+          }
+
+          // Initialize client for future use
+          mandrillClient.initialize(apiKey);
 
           // Only set the API key if validation succeeded
           set({
@@ -179,7 +210,9 @@ export const useMandrillStore = create<MandrillState>()(
         } catch (error) {
           console.error('Error setting API key:', error);
 
-          const errorMessage = 'Invalid API key. Please check your Mandrill API key and try again.';
+          const errorMessage = error instanceof Error
+            ? error.message
+            : 'Invalid API key. Please check your Mandrill API key and try again.';
 
           // Ensure state is completely cleared on failure
           set({

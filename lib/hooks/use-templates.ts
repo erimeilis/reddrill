@@ -9,19 +9,56 @@ function getApiKeyForAudit(): string | null {
   return useMandrillStore.getState().apiKey;
 }
 
-// Fetcher function that uses mandrillClient directly (client-side only!)
+// Fetcher function that uses API route to avoid CORS
 const fetcher = async () => {
-  if (!mandrillClient.isInitialized()) {
+  const apiKey = useMandrillStore.getState().apiKey;
+
+  if (!apiKey) {
     throw new Error('Mandrill client not initialized');
   }
-  return await mandrillClient.listTemplates();
+
+  const response = await fetch('/api/mandrill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      action: 'listTemplates'
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to fetch templates');
+  }
+
+  return result.templates;
 };
 
 const templateFetcher = async (slug: string) => {
-  if (!mandrillClient.isInitialized()) {
+  const apiKey = useMandrillStore.getState().apiKey;
+
+  if (!apiKey) {
     throw new Error('Mandrill client not initialized');
   }
-  return await mandrillClient.getTemplateInfo(slug);
+
+  const response = await fetch('/api/mandrill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      action: 'getTemplateInfo',
+      templateName: slug
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to fetch template info');
+  }
+
+  return result.template;
 };
 
 // Hook to fetch all templates with IndexedDB caching (instant load!)
@@ -89,20 +126,36 @@ export async function createTemplate(
   text: string,
   labels: string[]
 ) {
-  if (!mandrillClient.isInitialized()) {
+  const apiKey = useMandrillStore.getState().apiKey;
+
+  if (!apiKey) {
     throw new Error('Mandrill client not initialized');
   }
 
-  // Perform the actual create via Mandrill API
-  const newTemplate = await mandrillClient.addTemplate(
-    name,
-    code,
-    subject,
-    fromEmail,
-    fromName,
-    text,
-    labels
-  );
+  // Perform the actual create via API route
+  const response = await fetch('/api/mandrill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      action: 'addTemplate',
+      name,
+      code,
+      subject,
+      from_email: fromEmail,
+      from_name: fromName,
+      text,
+      labels
+    })
+  });
+
+  const result = await response.json();
+
+  if (!response.ok || !result.success) {
+    throw new Error(result.error || 'Failed to create template');
+  }
+
+  const newTemplate = result.template;
 
   // Log audit trail
   try {
@@ -165,28 +218,58 @@ export async function updateTemplate(
   text: string,
   labels: string[]
 ) {
-  if (!mandrillClient.isInitialized()) {
+  const apiKey = useMandrillStore.getState().apiKey;
+
+  if (!apiKey) {
     throw new Error('Mandrill client not initialized');
   }
 
   // Get current state before update for audit trail
   let stateBefore: MandrillTemplateInfo | null = null;
   try {
-    stateBefore = await mandrillClient.getTemplateInfo(slug);
+    const infoResponse = await fetch('/api/mandrill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        action: 'getTemplateInfo',
+        templateName: slug
+      })
+    });
+
+    const infoResult = await infoResponse.json();
+
+    if (infoResponse.ok && infoResult.success) {
+      stateBefore = infoResult.template;
+    }
   } catch (error) {
     console.error('Failed to fetch template before state:', error);
   }
 
-  // Perform the update via Mandrill API
-  const result = await mandrillClient.updateTemplate(
-    slug,
-    code,
-    subject,
-    fromEmail,
-    fromName,
-    text,
-    labels
-  );
+  // Perform the update via API route
+  const response = await fetch('/api/mandrill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      action: 'updateTemplate',
+      name: slug,
+      code,
+      subject,
+      from_email: fromEmail,
+      from_name: fromName,
+      text,
+      labels
+    })
+  });
+
+  const updateResult = await response.json();
+
+  if (!response.ok || !updateResult.success) {
+    throw new Error(updateResult.error || 'Failed to update template');
+  }
+
+  const result = updateResult.template;
 
   // Log audit trail
   if (stateBefore) {
@@ -244,20 +327,52 @@ export async function updateTemplate(
 }
 
 export async function deleteTemplate(slug: string) {
-  if (!mandrillClient.isInitialized()) {
+  const apiKey = useMandrillStore.getState().apiKey;
+
+  if (!apiKey) {
     throw new Error('Mandrill client not initialized');
   }
 
   // Get current state before delete for audit trail
   let stateBefore: MandrillTemplateInfo | null = null;
   try {
-    stateBefore = await mandrillClient.getTemplateInfo(slug);
+    const infoResponse = await fetch('/api/mandrill', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        action: 'getTemplateInfo',
+        templateName: slug
+      })
+    });
+
+    const infoResult = await infoResponse.json();
+
+    if (infoResponse.ok && infoResult.success) {
+      stateBefore = infoResult.template;
+    }
   } catch (error) {
     console.error('Failed to fetch template before state:', error);
   }
 
-  // Perform the actual delete via Mandrill API
-  const result = await mandrillClient.deleteTemplate(slug);
+  // Perform the actual delete via API route
+  const response = await fetch('/api/mandrill', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      apiKey,
+      action: 'deleteTemplate',
+      name: slug
+    })
+  });
+
+  const deleteResult = await response.json();
+
+  if (!response.ok || !deleteResult.success) {
+    throw new Error(deleteResult.error || 'Failed to delete template');
+  }
+
+  const result = deleteResult.template;
 
   // Log audit trail
   if (stateBefore) {

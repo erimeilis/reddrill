@@ -1,15 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MandrillTemplateInfo } from '@/lib/api/mandrill';
 import { IconPlus, IconX, IconLayoutGrid, IconTags, IconCheck } from '@tabler/icons-react';
-import mandrillClient from '@/lib/api/mandrill';
 import { useSettingsStore } from '@/lib/store/useSettingsStore';
 import { PlaceholderList } from '@/components/templates/placeholder-list';
 import { extractUniquePlaceholders } from '@/lib/utils/placeholder-parser';
+import { useMandrillStore } from '@/lib/store/useMandrillStore';
 
 interface TemplateDetailProps {
   templateSlug: string | null;
@@ -28,13 +28,50 @@ export function TemplateDetail({ templateSlug, isOpen, onClose, onTemplateUpdate
 
   // Fetch template details when dialog opens
   useEffect(() => {
+    // Reset state when dialog closes
+    if (!isOpen) {
+      setTemplate(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    // Prevent API call if no template slug provided
+    if (!templateSlug) {
+      setError('No template selected');
+      setLoading(false);
+      return;
+    }
+
     // Fetch template details from API
     const fetchTemplateDetails = async (slug: string) => {
+      const apiKey = useMandrillStore.getState().apiKey;
+      if (!apiKey) {
+        setError('Not connected to Mandrill');
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
       setError(null);
       try {
-        // Get template info by slug
-        const templateInfo = await mandrillClient.getTemplateInfo(slug);
+        const response = await fetch('/api/mandrill', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            apiKey,
+            action: 'getTemplateInfo',
+            templateName: slug
+          })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(result.error || 'Failed to fetch template info');
+        }
+
+        const templateInfo = result.template;
         setTemplate(templateInfo);
         setEditedLabels(templateInfo.labels || []);
 
@@ -48,9 +85,7 @@ export function TemplateDetail({ templateSlug, isOpen, onClose, onTemplateUpdate
       }
     };
 
-    if (isOpen && templateSlug) {
-      fetchTemplateDetails(templateSlug);
-    }
+    fetchTemplateDetails(templateSlug);
   }, [isOpen, templateSlug, addLastUsedTemplate]);
 
   // Add a new label
@@ -70,18 +105,32 @@ export function TemplateDetail({ templateSlug, isOpen, onClose, onTemplateUpdate
   const saveChanges = async () => {
     if (!template) return;
 
+    const apiKey = useMandrillStore.getState().apiKey;
+    if (!apiKey) {
+      setError('Not connected to Mandrill');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      await mandrillClient.updateTemplate(
-        template.name,
-        undefined, // code
-        undefined, // subject
-        undefined, // fromEmail
-        undefined, // fromName
-        undefined, // text
-        editedLabels // labels
-      );
+      const response = await fetch('/api/mandrill', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey,
+          action: 'updateTemplate',
+          name: template.name,
+          labels: editedLabels
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || 'Failed to update template');
+      }
+
       // Call onTemplateUpdated if provided
       if (onTemplateUpdated) {
         onTemplateUpdated();
@@ -110,6 +159,9 @@ export function TemplateDetail({ templateSlug, isOpen, onClose, onTemplateUpdate
               </span>
             ) : template ? template.name : 'Template Details'}
           </DialogTitle>
+          <DialogDescription>
+            View and edit template details, labels, and content
+          </DialogDescription>
         </DialogHeader>
 
         {error && (
