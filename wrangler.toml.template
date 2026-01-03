@@ -3,20 +3,12 @@ main = ".open-next/worker.js"
 compatibility_date = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Account ID - get from: wrangler whoami
-# account_id = "your-account-id"
-
 [observability]
 enabled = true
 
 # Static assets directory
 [assets]
 directory = ".open-next/assets"
-
-# KV namespace for cache (optional)
-# [[kv_namespaces]]
-# binding = "CACHE"
-# id = "your-kv-namespace-id"
 
 # Cloudflare Workers AI binding for translation
 [ai]
@@ -27,5 +19,8 @@ remote = true
 [[d1_databases]]
 binding = "DB"
 database_name = "reddrill-audit"
-database_id = "20330354-d122-4545-a309-11e6492c99d4"
+database_id = "{{D1_DATABASE_ID}}"
 migrations_dir = "drizzle"
+
+# Custom domain routing (generated from CUSTOM_DOMAIN in .env)
+{{ROUTES}}

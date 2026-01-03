@@ -7,7 +7,7 @@
 
   Built with Next.js 16 • Deployed on Cloudflare Workers ⚡
 
-  [![Deployed on Cloudflare Workers](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://workers.dev)
+  [![Deployed on Cloudflare Workers](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://reddrill.admice.com)
   [![GitHub](https://img.shields.io/badge/GitHub-erimeilis/reddrill-181717?logo=github)](https://github.com/erimeilis/reddrill)
 </div>
 
